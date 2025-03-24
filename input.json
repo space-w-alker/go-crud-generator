@@ -1,0 +1,83 @@
+[
+  {
+    "entityName": "Remark",
+    "fields": [
+      {
+        "fieldName": "id",
+        "fieldType": "number",
+        "primary": true,
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "fieldName": "label",
+        "fieldType": "string",
+        "primary": false,
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "fieldName": "rating",
+        "fieldType": "number",
+        "primary": false,
+        "nullable": false,
+        "default": null,
+        "unique": false
+      }
+    ],
+    "relations": [
+      {
+        "relationType": "ManyToOne",
+        "relatedEntity": "Institution",
+        "fieldName": "institution",
+        "nullable": false,
+        "cascade": true,
+        "deleteBehavior": "CASCADE"
+      }
+    ],
+    "queryParameters": [],
+    "additionalFeatures": {
+      "softDelete": false,
+      "pagination": true,
+      "sorting": true,
+      "dateFiltering": true,
+      "authenticationRequired": false,
+      "customValidationRules": []
+    },
+    "customEndpoints": []
+  },
+  {
+    "entityName": "Institution",
+    "fields": [
+      {
+        "fieldName": "id",
+        "fieldType": "number",
+        "primary": true,
+        "nullable": false,
+        "default": null,
+        "unique": true
+      },
+      {
+        "fieldName": "name",
+        "fieldType": "string",
+        "primary": false,
+        "nullable": false,
+        "default": null,
+        "unique": true
+      }
+    ],
+    "relations": [],
+    "queryParameters": [],
+    "additionalFeatures": {
+      "softDelete": false,
+      "pagination": true,
+      "sorting": true,
+      "dateFiltering": true,
+      "authenticationRequired": false,
+      "customValidationRules": []
+    },
+    "customEndpoints": []
+  }
+]

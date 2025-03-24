@@ -1,0 +1,186 @@
+package repositories
+
+import (
+	"errors"
+	"{{.ModuleName}}/models"
+	"{{.ModuleName}}/dto"
+	"gorm.io/gorm"
+)
+
+// {{.EntityName}}Repository handles database operations for {{.EntityName}}
+type {{.EntityName}}Repository struct {
+	DB *gorm.DB
+}
+
+// New{{.EntityName}}Repository creates a new repository
+func New{{.EntityName}}Repository(db *gorm.DB) *{{.EntityName}}Repository {
+	return &{{.EntityName}}Repository{DB: db}
+}
+
+// Create adds a new {{.EntityName}} to the database
+func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
+	{{.EntityNameLower}} := &models.{{.EntityName}}{}
+	{{$parent := .}}
+	// Map DTO to model
+	{{- range .Fields}}
+	{{- if not .Primary}}
+	{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}} = create.{{toGoFieldName .FieldName}}
+	{{- end}}
+	{{- end}}
+
+	{{- range .Relations}}
+	{{- if ne .RelationType "ManyToMany"}}
+	if create.{{toGoFieldName .FieldName}}Id != 0 {
+		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}Id = create.{{toGoFieldName .FieldName}}Id
+	}
+	{{- end}}
+	{{- end}}
+	
+	// Save to database
+	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
+		return nil, err
+	}
+	
+	return {{.EntityNameLower}}, nil
+}
+
+// GetAll retrieves all {{.EntityNamePlural}} with optional filtering
+func (r *{{.EntityName}}Repository) GetAll(query *dto.{{.EntityName}}Query) ([]models.{{.EntityName}}, int64, int64, error) {
+	var {{.EntityNameLower}}s []models.{{.EntityName}}
+	var count int64
+	var totalPages int64 = 1
+	db := r.DB
+	
+	// Apply filters from query parameters
+	{{- range .QueryParameters}}
+	{{- if eq .ParamType "string"}}
+	if query.{{toGoFieldName .ParamName}} != "" {
+		db = db.Where("{{.ParamName}} LIKE ?", "%"+query.{{toGoFieldName .ParamName}}+"%")
+	}
+	{{- else}}
+	if query.{{toGoFieldName .ParamName}} != {{getZeroValue .ParamType}} {
+		db = db.Where("{{.ParamName}} = ?", query.{{toGoFieldName .ParamName}})
+	}
+	{{- end}}
+	{{- end}}
+	
+	{{- if .AdditionalFeatures.DateFiltering}}
+	// Date filtering
+	if query.StartDate != nil {
+		db = db.Where("created_at >= ?", query.StartDate)
+	}
+	if query.EndDate != nil {
+		db = db.Where("created_at <= ?", query.EndDate)
+	}
+	{{- end}}
+	
+	// Count total records
+	db.Model(&models.{{.EntityName}}{}).Count(&count)
+	
+	{{- if .AdditionalFeatures.Pagination}}
+	// Calculate total pages
+	if query.Size > 0 {
+		totalPages = (count + int64(query.Size) - 1) / int64(query.Size)
+		if totalPages == 0 {
+			totalPages = 1
+		}
+	}
+	{{- end}}
+	
+	{{- if .AdditionalFeatures.Sorting}}
+	// Apply sorting
+	if query.SortBy != "" {
+		sortOrder := "asc"
+		if query.SortOrder == "desc" {
+			sortOrder = "desc"
+		}
+		db = db.Order(query.SortBy + " " + sortOrder)
+	} else {
+		db = db.Order("created_at desc")
+	}
+	{{- else}}
+	// Default sorting
+	db = db.Order("created_at desc")
+	{{- end}}
+	
+	{{- if .AdditionalFeatures.Pagination}}
+	// Apply pagination
+	if query.Page > 0 && query.Size > 0 {
+		offset := (query.Page - 1) * query.Size
+		db = db.Offset(offset).Limit(query.Size)
+	}
+	{{- end}}
+	
+	// Execute query
+	if err := db.Find(&{{.EntityNameLower}}s).Error; err != nil {
+		return nil, 0, 0, err
+	}
+	
+	return {{.EntityNameLower}}s, count, totalPages, nil
+}
+
+// GetByID retrieves a single {{.EntityName}} by ID
+func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}) (*models.{{.EntityName}}, error) {
+	var {{.EntityNameLower}} models.{{.EntityName}}
+	
+	if err := r.DB.First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("{{.EntityName}} not found")
+		}
+		return nil, err
+	}
+	
+	return &{{.EntityNameLower}}, nil
+}
+
+// Update updates an existing {{.EntityName}}
+func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
+	{{.EntityNameLower}}, err := r.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	
+	{{$parent := .}}
+	// Update fields if provided in DTO
+	{{- range .Fields}}
+	{{- if not .Primary}}
+	if update.{{toGoFieldName .FieldName}} != {{getZeroValue (convertTypeScriptTypeToGo .FieldType)}} {
+		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}} = update.{{toGoFieldName .FieldName}}
+	}
+	{{- end}}
+	{{- end}}
+
+	
+	{{- range .Relations}}
+	{{- if ne .RelationType "ManyToMany"}}
+	if update.{{toGoFieldName .FieldName}}Id != 0 {
+		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}Id = update.{{toGoFieldName .FieldName}}Id
+	}
+	{{- end}}
+	{{- end}}
+	
+	// Save changes
+	if err := r.DB.Save(&{{.EntityNameLower}}).Error; err != nil {
+		return nil, err
+	}
+	
+	return {{.EntityNameLower}}, nil
+}
+
+// Delete removes a {{.EntityName}} from the database
+func (r *{{.EntityName}}Repository) Delete(id {{.GetPrimaryKeyType}}) error {
+	{{- if .AdditionalFeatures.SoftDelete}}
+	// Soft delete
+	if err := r.DB.Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+		return err
+	}
+	{{- else}}
+	// Hard delete
+	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+		return err
+	}
+	{{- end}}
+	
+	return nil
+}
+

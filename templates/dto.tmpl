@@ -1,0 +1,65 @@
+package dto
+
+import (
+	"time"
+)
+
+// {{.EntityName}}Create DTO for creating a new {{.EntityName}}
+type {{.EntityName}}Create struct {
+	{{- range .Fields}}
+	{{- if not .Primary}}
+	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
+	{{- end}}
+	{{- end}}
+	{{- range .Relations}}
+	{{- if ne .RelationType "ManyToMany"}}
+	{{toGoFieldName .FieldName}}Id {{relatedIDType .}} `json:"{{.FieldName}}Id,omitempty"`
+	{{- end}}
+	{{- end}}
+}
+
+// {{.EntityName}}Update DTO for updating an existing {{.EntityName}}
+type {{.EntityName}}Update struct {
+	{{- range .Fields}}
+	{{- if not .Primary}}
+	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty"`
+	{{- end}}
+	{{- end}}
+	{{- range .Relations}}
+	{{- if ne .RelationType "ManyToMany"}}
+	{{toGoFieldName .FieldName}}Id {{relatedIDType .}} `json:"{{.FieldName}},omitempty"`
+	{{- end}}
+	{{- end}}
+}
+
+// {{.EntityName}}Response DTO for responding with {{.EntityName}} data
+type {{.EntityName}}Response struct {
+	{{- range .Fields}}
+	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
+	{{- end}}
+	{{- range .Relations}}
+	{{formatRelationDTO .}}
+	{{- end}}
+	{{- if .AdditionalFeatures.SoftDelete}}
+	DeletedAt *time.Time `json:"deletedAt,omitempty"`
+	{{- end}}
+}
+
+// {{.EntityName}}Query DTO for querying {{.EntityName}} data
+type {{.EntityName}}Query struct {
+	{{- range .QueryParameters}}
+	{{toGoFieldName .ParamName}} {{convertTypeScriptTypeToGo .ParamType}} `form:"{{.ParamName}}{{if not .Required}},omitempty{{end}}" json:"{{.ParamName}}{{if not .Required}},omitempty{{end}}"` // {{.Description}}
+	{{- end}}
+	{{- if .AdditionalFeatures.Pagination}}
+	Page int `form:"page,omitempty" json:"page,omitempty"`
+	Size int `form:"size,omitempty" json:"size,omitempty"`
+	{{- end}}
+	{{- if .AdditionalFeatures.Sorting}}
+	SortBy string `form:"sortBy,omitempty" json:"sortBy,omitempty"`
+	SortOrder string `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
+	{{- end}}
+	{{- if .AdditionalFeatures.DateFiltering}}
+	StartDate *time.Time `form:"startDate,omitempty" json:"startDate,omitempty"`
+	EndDate *time.Time `form:"endDate,omitempty" json:"endDate,omitempty"`
+	{{- end}}
+}

@@ -1,0 +1,230 @@
+package controllers
+
+import (
+	"net/http"
+	"strconv"
+	
+	"github.com/gin-gonic/gin"
+	"{{.ModuleName}}/dto"
+	"{{.ModuleName}}/repositories"
+	"{{.ModuleName}}/models"
+)
+
+// {{.EntityName}}Controller handles HTTP requests for {{.EntityName}}
+type {{.EntityName}}Controller struct {
+	repository *repositories.{{.EntityName}}Repository
+}
+
+// New{{.EntityName}}Controller creates a new controller
+func New{{.EntityName}}Controller(repository *repositories.{{.EntityName}}Repository) *{{.EntityName}}Controller {
+	return &{{.EntityName}}Controller{repository: repository}
+}
+
+// RegisterRoutes sets up the routing for the {{.EntityName}} controller
+func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.Engine) {
+	{{.EntityName}} := router.Group("/{{.EntityNameLower}}"{{if .AdditionalFeatures.AuthenticationRequired}}, middleware.Authenticate(){{end}})
+	{
+		{{.EntityName}}.POST("", c.Create)
+		{{.EntityName}}.GET("", c.GetAll)
+		{{.EntityName}}.GET("/:id", c.GetByID)
+		{{.EntityName}}.PUT("/:id", c.Update)
+		{{.EntityName}}.DELETE("/:id", c.Delete)
+		
+		// Custom endpoints
+		{{- range .CustomEndpoints}}
+		{{.EntityName}}.{{.HTTPMethod}}("{{.Path}}", c.{{.EndpointName}})
+		{{- end}}
+	}
+}
+
+// Create handles creating a new {{.EntityName}}
+// @Summary Create a new {{.EntityName}}
+// @Description Create a new {{.EntityName}} with the input payload
+// @Tags {{.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Param {{.EntityName}} body dto.{{.EntityName}}Create true "{{.EntityName}} object that needs to be created"
+// @Success 201 {object} dto.{{.EntityName}}Response
+// @Failure 400 {object} dto.ErrorResponse "Invalid input"
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /{{.EntityNameLower}} [post]
+func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
+	var input dto.{{.EntityName}}Create
+	
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	
+	{{.EntityName}}, err := c.repository.Create(&input)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	ctx.JSON(http.StatusCreated, to{{.EntityName}}Response({{.EntityName}}))
+}
+
+// GetAll handles retrieving all {{.EntityNamePlural}}
+// @Summary Get all {{.EntityNamePlural}}
+// @Description Get all {{.EntityNamePlural}} with optional filtering
+// @Tags {{.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Param query query dto.{{.EntityName}}Query false "Query parameters"
+// @Success 200 {array} dto.{{.EntityName}}Response
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /{{.EntityNameLower}} [get]
+func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
+	var query dto.{{.EntityName}}Query
+	
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	
+	{{.EntityNameLower}}s, total, totalPages, err := c.repository.GetAll(&query)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	// Convert to response DTOs
+	var response []*dto.{{.EntityName}}Response
+	for _, {{.EntityName}} := range {{.EntityNameLower}}s {
+		response = append(response, to{{.EntityName}}Response(&{{.EntityName}}))
+	}
+	
+	{{- if .AdditionalFeatures.Pagination}}
+	ctx.Header("X-Total-Count", strconv.FormatInt(total, 10))
+	ctx.Header("X-Total-Pages", strconv.FormatInt(totalPages, 10))
+	{{- end}}
+	
+	ctx.JSON(http.StatusOK, response)
+}
+
+// GetByID handles retrieving a single {{.EntityName}} by ID
+// @Summary Get a {{.EntityName}} by ID
+// @Description Get a {{.EntityName}} by ID
+// @Tags {{.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
+// @Success 200 {object} dto.{{.EntityName}}Response
+// @Failure 404 {object} dto.ErrorResponse "Not found"
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /{{.EntityNameLower}}/{id} [get]
+func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
+	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
+	
+	{{.EntityName}}, err := c.repository.GetByID(id)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	
+	ctx.JSON(http.StatusOK, to{{.EntityName}}Response({{.EntityName}}))
+}
+
+// Update handles updating an existing {{.EntityName}}
+// @Summary Update a {{.EntityName}}
+// @Description Update a {{.EntityName}} with the input payload
+// @Tags {{.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
+// @Param {{.EntityName}} body dto.{{.EntityName}}Update true "{{.EntityName}} object that needs to be updated"
+// @Success 200 {object} dto.{{.EntityName}}Response
+// @Failure 400 {object} dto.ErrorResponse "Invalid input"
+// @Failure 404 {object} dto.ErrorResponse "Not found"
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /{{.EntityNameLower}}/{id} [put]
+func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
+	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
+	
+	var input dto.{{.EntityName}}Update
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	
+	{{.EntityName}}, err := c.repository.Update(id, &input)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	
+	ctx.JSON(http.StatusOK, to{{.EntityName}}Response({{.EntityName}}))
+}
+
+// Delete handles removing a {{.EntityName}}
+// @Summary Delete a {{.EntityName}}
+// @Description Delete a {{.EntityName}} by ID
+// @Tags {{.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
+// @Success 204 "No Content"
+// @Failure 404 {object} dto.ErrorResponse "Not found"
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /{{.EntityNameLower}}/{id} [delete]
+func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
+	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
+	
+	if err := c.repository.Delete(id); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	ctx.Status(http.StatusNoContent)
+}
+
+{{- range .CustomEndpoints}}
+// {{.EndpointName}} handles the custom endpoint {{.Path}}
+// @Summary {{.Description}}
+// @Description {{.Description}}
+// @Tags {{$.EntityNamePlural}}
+// @Accept json
+// @Produce json
+// @Router /{{$.EntityName}}s{{.Path}} [{{.HTTPMethod | lower}}]
+func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context) {
+	// Custom endpoint implementation
+	ctx.JSON(http.StatusOK, gin.H{"message": "Not implemented yet"})
+}
+{{- end}}
+
+// Helper functions
+func to{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
+	if model == nil {
+		return nil
+	}
+	return &dto.{{.EntityName}}Response{
+		{{- range .Fields}}
+		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
+		{{- end}}
+		{{- range .Relations}}
+	  {{- if ne .RelationType "ManyToMany"}}
+		{{toGoFieldName .FieldName}}Id: model.{{toGoFieldName .FieldName}}Id,
+    {{toGoFieldName .FieldName}}: to{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
+		{{- end}}
+		{{- end}}
+		{{- if .AdditionalFeatures.SoftDelete}}
+		DeletedAt: func() *time.Time {
+			if model.DeletedAt != nil && !model.DeletedAt.Time.IsZero() {
+				return &model.DeletedAt.Time
+			}
+			return nil
+		}(),
+		{{- end}}
+	}
+}
+
+func parse{{.EntityName}}PrimaryKey(param string) {{.GetPrimaryKeyType}} {
+	{{- if eq (.GetPrimaryKeyType) "uint" "int" "int64" "uint64"}}
+	id, _ := strconv.Atoi(param)
+	return {{.GetPrimaryKeyType}}(id)
+	{{- else}}
+	return param
+	{{- end}}
+}
+
