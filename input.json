@@ -37,7 +37,6 @@
         "deleteBehavior": "CASCADE"
       }
     ],
-    "queryParameters": [],
     "additionalFeatures": {
       "softDelete": false,
       "pagination": true,
@@ -69,7 +68,6 @@
       }
     ],
     "relations": [],
-    "queryParameters": [],
     "additionalFeatures": {
       "softDelete": false,
       "pagination": true,

@@ -1,3 +1,4 @@
+//nolint:dupl // Disable dupl linter for this entire file
 package repositories
 
 import (
@@ -5,6 +6,10 @@ import (
 	"{{.ModuleName}}/models"
 	"{{.ModuleName}}/dto"
 	"gorm.io/gorm"
+)
+
+var (
+  Err{{.EntityName}}NotFound = errors.New("{{.EntityNameLower}} not found")
 )
 
 // {{.EntityName}}Repository handles database operations for {{.EntityName}}
@@ -28,13 +33,13 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 	{{- end}}
 	{{- end}}
 
-	{{- range .Relations}}
-	{{- if ne .RelationType "ManyToMany"}}
-	if create.{{toGoFieldName .FieldName}}Id != 0 {
-		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}Id = create.{{toGoFieldName .FieldName}}Id
-	}
-	{{- end}}
-	{{- end}}
+  {{- range .Relations}}
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+  if create.{{toGoFieldName .FieldName}}ID != "" {
+	  {{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
+  }
+  {{- end}}
+  {{- end}}
 	
 	// Save to database
 	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
@@ -45,78 +50,24 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 }
 
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
-func (r *{{.EntityName}}Repository) GetAll(query *dto.{{.EntityName}}Query) ([]models.{{.EntityName}}, int64, int64, error) {
+func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query) ([]models.{{.EntityName}}, int64, int64, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
-	var count int64
-	var totalPages int64 = 1
-	db := r.DB
-	
-	// Apply filters from query parameters
-	{{- range .QueryParameters}}
-	{{- if eq .ParamType "string"}}
-	if query.{{toGoFieldName .ParamName}} != "" {
-		db = db.Where("{{.ParamName}} LIKE ?", "%"+query.{{toGoFieldName .ParamName}}+"%")
-	}
-	{{- else}}
-	if query.{{toGoFieldName .ParamName}} != {{getZeroValue .ParamType}} {
-		db = db.Where("{{.ParamName}} = ?", query.{{toGoFieldName .ParamName}})
-	}
-	{{- end}}
-	{{- end}}
-	
-	{{- if .AdditionalFeatures.DateFiltering}}
-	// Date filtering
-	if query.StartDate != nil {
-		db = db.Where("created_at >= ?", query.StartDate)
-	}
-	if query.EndDate != nil {
-		db = db.Where("created_at <= ?", query.EndDate)
-	}
-	{{- end}}
-	
-	// Count total records
-	db.Model(&models.{{.EntityName}}{}).Count(&count)
-	
-	{{- if .AdditionalFeatures.Pagination}}
-	// Calculate total pages
-	if query.Size > 0 {
-		totalPages = (count + int64(query.Size) - 1) / int64(query.Size)
-		if totalPages == 0 {
-			totalPages = 1
-		}
-	}
-	{{- end}}
-	
-	{{- if .AdditionalFeatures.Sorting}}
-	// Apply sorting
-	if query.SortBy != "" {
-		sortOrder := "asc"
-		if query.SortOrder == "desc" {
-			sortOrder = "desc"
-		}
-		db = db.Order(query.SortBy + " " + sortOrder)
-	} else {
-		db = db.Order("created_at desc")
-	}
-	{{- else}}
-	// Default sorting
-	db = db.Order("created_at desc")
-	{{- end}}
-	
-	{{- if .AdditionalFeatures.Pagination}}
-	// Apply pagination
-	if query.Page > 0 && query.Size > 0 {
-		offset := (query.Page - 1) * query.Size
-		db = db.Offset(offset).Limit(query.Size)
-	}
-	{{- end}}
-	
-	// Execute query
-	if err := db.Find(&{{.EntityNameLower}}s).Error; err != nil {
+
+	query := r.DB.Model(&models.{{.EntityName}}{})
+
+	query.Where(&(q.{{.EntityName}}Query))
+
+	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
+
+	if err := p.Count(query, &models.{{.EntityName}}{}); err != nil {
 		return nil, 0, 0, err
 	}
-	
-	return {{.EntityNameLower}}s, count, totalPages, nil
+
+	if err := query.Scopes(p.Paginate()).Find(&{{.EntityNameLower}}s).Error; err != nil {
+		return nil, 0, 0, err
+	}
+
+	return {{.EntityNameLower}}s, p.TotalRows, int64(p.TotalPages), nil
 }
 
 // GetByID retrieves a single {{.EntityName}} by ID
@@ -125,7 +76,7 @@ func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}) (*models.
 	
 	if err := r.DB.First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.New("{{.EntityName}} not found")
+			return nil, Err{{.EntityName}}NotFound
 		}
 		return nil, err
 	}
@@ -140,31 +91,12 @@ func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dt
 		return nil, err
 	}
 	
-	{{$parent := .}}
-	// Update fields if provided in DTO
-	{{- range .Fields}}
-	{{- if not .Primary}}
-	if update.{{toGoFieldName .FieldName}} != {{getZeroValue (convertTypeScriptTypeToGo .FieldType)}} {
-		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}} = update.{{toGoFieldName .FieldName}}
-	}
-	{{- end}}
-	{{- end}}
-
-	
-	{{- range .Relations}}
-	{{- if ne .RelationType "ManyToMany"}}
-	if update.{{toGoFieldName .FieldName}}Id != 0 {
-		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}Id = update.{{toGoFieldName .FieldName}}Id
-	}
-	{{- end}}
-	{{- end}}
-	
-	// Save changes
-	if err := r.DB.Save(&{{.EntityNameLower}}).Error; err != nil {
+  if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
 		return nil, err
 	}
-	
-	return {{.EntityNameLower}}, nil
+
+	// Save changes
+  return {{.EntityNameLower}}, nil
 }
 
 // Delete removes a {{.EntityName}} from the database

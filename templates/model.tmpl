@@ -2,23 +2,29 @@ package models
 
 import (
 	"gorm.io/gorm"
+
+	"github.com/google/uuid"
+	"time"
 )
 
 // {{.EntityName}} represents the {{.EntityName}} entity
 type {{.EntityName}} struct {
   gorm.Model
+  {{$entityName := .EntityName}}
 	{{- range .Fields}}
 	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `{{formatGormTags . $.TableName}} {{formatValidationTags .}}`
 	{{- end}}
 	{{- range .Relations}}
-	{{formatRelation .}}
-	{{- end}}
-	{{- if .AdditionalFeatures.SoftDelete}}
-	DeletedAt *gorm.DeletedAt `gorm:"index"`
+	{{formatRelation $entityName .}}
 	{{- end}}
 }
 
 // TableName sets the table name for the {{.EntityName}} model
 func ({{.EntityNameLower}} *{{.EntityName}}) TableName() string {
 	return "{{.GetTableName}}"
+}
+
+func ({{.EntityNameLower}} *{{.EntityName}}) BeforeCreate(tx *gorm.DB) (err error) {
+  {{.EntityNameLower}}.{{toGoFieldName .GetPrimaryKeyName}} = uuid.New().String()
+  return
 }

@@ -1,0 +1,18 @@
+//nolint:funlen // Disable funlen linter for this entire file
+package {{.PackageName}}
+
+import (
+  "{{.ModuleName}}/controllers"
+	"{{.ModuleName}}/repositories"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+func SetupControllersAndRoutes(r *gin.RouterGroup, db *gorm.DB) {
+	{{- range .Entities}}
+	{{.EntityNameLower}}Repo := repositories.New{{.EntityName}}Repository(db)
+	{{.EntityNameLower}}Controller := controllers.New{{.EntityName}}Controller({{.EntityNameLower}}Repo)
+	{{.EntityNameLower}}Controller.RegisterRoutes(r)
+	{{.EntityNameLower}}Controller.RegisterMainRoutes(r)
+  {{- end}}
+}

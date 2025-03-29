@@ -1,3 +1,4 @@
+//nolint:dupl // Disable dupl linter for this entire file
 package controllers
 
 import (
@@ -21,8 +22,8 @@ func New{{.EntityName}}Controller(repository *repositories.{{.EntityName}}Reposi
 }
 
 // RegisterRoutes sets up the routing for the {{.EntityName}} controller
-func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.Engine) {
-	{{.EntityName}} := router.Group("/{{.EntityNameLower}}"{{if .AdditionalFeatures.AuthenticationRequired}}, middleware.Authenticate(){{end}})
+func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.RouterGroup) {
+	{{.EntityName}} := router.Group("/{{snakeCase .EntityName}}")
 	{
 		{{.EntityName}}.POST("", c.Create)
 		{{.EntityName}}.GET("", c.GetAll)
@@ -47,7 +48,8 @@ func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.Engine) {
 // @Success 201 {object} dto.{{.EntityName}}Response
 // @Failure 400 {object} dto.ErrorResponse "Invalid input"
 // @Failure 500 {object} dto.ErrorResponse "Server error"
-// @Router /{{.EntityNameLower}} [post]
+// @Router /{{snakeCase .EntityName}} [post]
+// @ID create{{.EntityName}}
 func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 	var input dto.{{.EntityName}}Create
 	
@@ -71,12 +73,13 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 // @Tags {{.EntityNamePlural}}
 // @Accept json
 // @Produce json
-// @Param query query dto.{{.EntityName}}Query false "Query parameters"
+// @Param query query dto.Full{{.EntityName}}Query false "Query parameters"
 // @Success 200 {array} dto.{{.EntityName}}Response
 // @Failure 500 {object} dto.ErrorResponse "Server error"
-// @Router /{{.EntityNameLower}} [get]
+// @Router /{{snakeCase .EntityName}} [get]
+// @ID getAll{{.EntityName}}
 func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
-	var query dto.{{.EntityName}}Query
+	var query dto.Full{{.EntityName}}Query
 	
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -90,17 +93,15 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 	}
 	
 	// Convert to response DTOs
-	var response []*dto.{{.EntityName}}Response
+  response := make([]*dto.{{.EntityName}}Response, 0, 20)
 	for _, {{.EntityName}} := range {{.EntityNameLower}}s {
 		response = append(response, to{{.EntityName}}Response(&{{.EntityName}}))
 	}
 	
-	{{- if .AdditionalFeatures.Pagination}}
-	ctx.Header("X-Total-Count", strconv.FormatInt(total, 10))
-	ctx.Header("X-Total-Pages", strconv.FormatInt(totalPages, 10))
-	{{- end}}
-	
-	ctx.JSON(http.StatusOK, response)
+  paginated := dto.Paginated{{.EntityName}}Response{Items: response, PaginationResponse: dto.PaginationResponse{
+		PageSize: lo.CoalesceOrEmpty(query.Size, 10), TotalPages: int(totalPages), TotalItemCount: int(total),
+	}}
+	ctx.JSON(http.StatusOK, paginated)
 }
 
 // GetByID handles retrieving a single {{.EntityName}} by ID
@@ -113,7 +114,8 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 // @Success 200 {object} dto.{{.EntityName}}Response
 // @Failure 404 {object} dto.ErrorResponse "Not found"
 // @Failure 500 {object} dto.ErrorResponse "Server error"
-// @Router /{{.EntityNameLower}}/{id} [get]
+// @Router /{{snakeCase .EntityName}}/{id} [get]
+// @ID get{{.EntityName}}ById
 func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	
@@ -138,7 +140,8 @@ func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 // @Failure 400 {object} dto.ErrorResponse "Invalid input"
 // @Failure 404 {object} dto.ErrorResponse "Not found"
 // @Failure 500 {object} dto.ErrorResponse "Server error"
-// @Router /{{.EntityNameLower}}/{id} [put]
+// @Router /{{snakeCase .EntityName}}/{id} [put]
+// @ID update{{.EntityName}}
 func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	
@@ -167,7 +170,8 @@ func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 // @Success 204 "No Content"
 // @Failure 404 {object} dto.ErrorResponse "Not found"
 // @Failure 500 {object} dto.ErrorResponse "Server error"
-// @Router /{{.EntityNameLower}}/{id} [delete]
+// @Router /{{snakeCase .EntityName}}/{id} [delete]
+// @ID delete{{.EntityName}}
 func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	
@@ -186,7 +190,7 @@ func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
 // @Tags {{$.EntityNamePlural}}
 // @Accept json
 // @Produce json
-// @Router /{{$.EntityName}}s{{.Path}} [{{.HTTPMethod | lower}}]
+// @Router /{{snakeCase .EntityName}}s{{.Path}} [{{.HTTPMethod | lower}}]
 func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context) {
 	// Custom endpoint implementation
 	ctx.JSON(http.StatusOK, gin.H{"message": "Not implemented yet"})
@@ -203,18 +207,10 @@ func to{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName
 		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
 		{{- end}}
 		{{- range .Relations}}
-	  {{- if ne .RelationType "ManyToMany"}}
-		{{toGoFieldName .FieldName}}Id: model.{{toGoFieldName .FieldName}}Id,
+    {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
     {{toGoFieldName .FieldName}}: to{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
 		{{- end}}
-		{{- end}}
-		{{- if .AdditionalFeatures.SoftDelete}}
-		DeletedAt: func() *time.Time {
-			if model.DeletedAt != nil && !model.DeletedAt.Time.IsZero() {
-				return &model.DeletedAt.Time
-			}
-			return nil
-		}(),
 		{{- end}}
 	}
 }

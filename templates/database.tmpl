@@ -1,0 +1,104 @@
+package {{.PackageName}}
+
+import (
+	"fmt"
+	"log"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+// PostgresConfig holds PostgreSQL-specific configuration parameters
+type PostgresConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+}
+
+// SQLiteConfig holds SQLite-specific configuration parameters
+type SQLiteConfig struct {
+	Path string // Path to the SQLite database file
+}
+
+// NewPostgresDB creates a new PostgreSQL database connection using GORM
+func NewPostgresDB(config PostgresConfig) (*gorm.DB, error) {
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
+		config.Host, config.Port, config.User, config.Password, config.DBName, config.SSLMode)
+
+	gormConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info), // Adjust log level as needed
+	}
+
+	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
+	}
+
+	// Test the connection
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PostgreSQL database instance: %w", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping PostgreSQL database: %w", err)
+	}
+
+	if err := AutoMigrate(db); err != nil {
+		return nil, fmt.Errorf("Migration Failed: %w", err)
+	}
+
+	log.Println("Successfully connected to PostgreSQL database")
+	return db, nil
+}
+
+// NewSQLiteDB creates a new SQLite database connection using GORM
+func NewSQLiteDB(config SQLiteConfig) (*gorm.DB, error) {
+	gormConfig := &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info), // Adjust log level as needed
+	}
+
+	db, err := gorm.Open(sqlite.Open(config.Path), gormConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to SQLite database: %w", err)
+	}
+
+	// SQLite doesn't need ping, but we'll verify the connection is open
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get SQLite database instance: %w", err)
+	}
+
+	if err := sqlDB.Ping(); err != nil {
+		return nil, fmt.Errorf("failed to ping SQLite database: %w", err)
+	}
+
+	if err := AutoMigrate(db); err != nil {
+		return nil, fmt.Errorf("Migration Failed: %w", err)
+	}
+
+	log.Println("Successfully connected to SQLite database")
+	return db, nil
+}
+
+// CloseDB closes the database connection (works for both PostgreSQL and SQLite)
+func CloseDB(db *gorm.DB) error {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get database instance: %w", err)
+	}
+	return sqlDB.Close()
+}
+
+func AutoMigrate(db *gorm.DB) error {
+	return db.AutoMigrate(
+	{{- range .Entities}}
+    &models.{{.EntityName}}{},
+  {{- end}}
+  )
+}

@@ -1,0 +1,47 @@
+package {{.PackageName}}
+
+import (
+	"log"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+)
+
+// Config holds server configuration parameters
+type Config struct {
+	Port            string
+	Mode            string
+	ShutdownTimeout time.Duration
+}
+
+// NewServer creates a new Gin server with default middleware
+func NewServer(config Config) *gin.Engine {
+	// Set Gin mode
+	gin.SetMode(config.Mode)
+
+	// Create new Gin instance
+	r := gin.New()
+
+	// Add middleware
+	r.Use(gin.Logger())
+	r.Use(gin.Recovery())
+
+	// Configure CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"}, // Adjust in production
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	return r
+}
+
+// StartServer starts the HTTP server
+func StartServer(r *gin.Engine, port string) error {
+	log.Printf("Server starting on port %s", port)
+	return r.Run(":" + port)
+}

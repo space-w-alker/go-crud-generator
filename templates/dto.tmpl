@@ -12,8 +12,8 @@ type {{.EntityName}}Create struct {
 	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
-	{{- if ne .RelationType "ManyToMany"}}
-	{{toGoFieldName .FieldName}}Id {{relatedIDType .}} `json:"{{.FieldName}}Id,omitempty"`
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
 }
@@ -26,8 +26,8 @@ type {{.EntityName}}Update struct {
 	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
-	{{- if ne .RelationType "ManyToMany"}}
-	{{toGoFieldName .FieldName}}Id {{relatedIDType .}} `json:"{{.FieldName}},omitempty"`
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
 }
@@ -38,28 +38,34 @@ type {{.EntityName}}Response struct {
 	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
 	{{- end}}
 	{{- range .Relations}}
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 	{{formatRelationDTO .}}
 	{{- end}}
-	{{- if .AdditionalFeatures.SoftDelete}}
-	DeletedAt *time.Time `json:"deletedAt,omitempty"`
 	{{- end}}
+}
+
+type Paginated{{.EntityName}}Response struct {
+	PaginationResponse
+	Items []*{{.EntityName}}Response `json:"items"`
 }
 
 // {{.EntityName}}Query DTO for querying {{.EntityName}} data
 type {{.EntityName}}Query struct {
-	{{- range .QueryParameters}}
-	{{toGoFieldName .ParamName}} {{convertTypeScriptTypeToGo .ParamType}} `form:"{{.ParamName}}{{if not .Required}},omitempty{{end}}" json:"{{.ParamName}}{{if not .Required}},omitempty{{end}}"` // {{.Description}}
+  {{- range .Fields}}
+	{{- if .FilterBy}}
+	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
 	{{- end}}
-	{{- if .AdditionalFeatures.Pagination}}
-	Page int `form:"page,omitempty" json:"page,omitempty"`
-	Size int `form:"size,omitempty" json:"size,omitempty"`
+  {{- end}}
+	{{- range .Relations}}
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `form:"{{.FieldName}}ID,omitempty" json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
-	{{- if .AdditionalFeatures.Sorting}}
-	SortBy string `form:"sortBy,omitempty" json:"sortBy,omitempty"`
-	SortOrder string `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
 	{{- end}}
-	{{- if .AdditionalFeatures.DateFiltering}}
-	StartDate *time.Time `form:"startDate,omitempty" json:"startDate,omitempty"`
-	EndDate *time.Time `form:"endDate,omitempty" json:"endDate,omitempty"`
-	{{- end}}
+}
+
+
+type Full{{.EntityName}}Query struct {
+  DateQuery
+	PaginationQuery
+  {{.EntityName}}Query
 }

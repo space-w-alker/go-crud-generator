@@ -1,19 +1,25 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"go/format"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"github.com/samber/lo"
 )
 
 // Input types matching your TypeScript interface
 type Field struct {
 	FieldName string      `json:"fieldName"`
 	FieldType string      `json:"fieldType"`
+	FilterBy  bool        `json:"filterBy,omitempty"`
 	Primary   bool        `json:"primary"`
 	Nullable  bool        `json:"nullable"`
 	Default   interface{} `json:"default"`
@@ -23,17 +29,11 @@ type Field struct {
 type Relation struct {
 	RelationType   string `json:"relationType"`
 	RelatedEntity  string `json:"relatedEntity"`
+	ForeignKey     string `json:"foreignKey"`
 	FieldName      string `json:"fieldName"`
 	Nullable       bool   `json:"nullable"`
 	Cascade        bool   `json:"cascade"`
 	DeleteBehavior string `json:"deleteBehavior"`
-}
-
-type QueryParameter struct {
-	ParamName   string `json:"paramName"`
-	ParamType   string `json:"paramType"`
-	Required    bool   `json:"required"`
-	Description string `json:"description"`
 }
 
 type CustomEndpoint struct {
@@ -52,34 +52,33 @@ type AdditionalFeatures struct {
 	CustomValidationRules  []string `json:"customValidationRules"`
 }
 
-type InputJson struct {
+type Entity struct {
 	EntityName         string             `json:"entityName"`
 	ModuleName         string             `json:"moduleName"`
 	TableName          string             `json:"tableName,omitempty"`
 	Fields             []Field            `json:"fields"`
 	Relations          []Relation         `json:"relations"`
-	QueryParameters    []QueryParameter   `json:"queryParameters"`
 	AdditionalFeatures AdditionalFeatures `json:"additionalFeatures"`
 	CustomEndpoints    []CustomEndpoint   `json:"customEndpoints"`
 }
 
 // Helper functions for templates
-func (input *InputJson) GetTableName() string {
+func (input *Entity) GetTableName() string {
 	if input.TableName != "" {
 		return input.TableName
 	}
-	return strings.ToLower(input.EntityName) + "s"
+	return lo.SnakeCase(input.EntityName) + "s"
 }
 
-func (input *InputJson) EntityNameLower() string {
+func (input *Entity) EntityNameLower() string {
 	return strings.ToLower(input.EntityName)
 }
 
-func (input *InputJson) EntityNamePlural() string {
+func (input *Entity) EntityNamePlural() string {
 	return input.EntityName + "s"
 }
 
-func (input *InputJson) HasPrimaryKey() bool {
+func (input *Entity) HasPrimaryKey() bool {
 	for _, field := range input.Fields {
 		if field.Primary {
 			return true
@@ -88,32 +87,32 @@ func (input *InputJson) HasPrimaryKey() bool {
 	return false
 }
 
-func (input *InputJson) GetPrimaryKey() Field {
+func (input *Entity) GetPrimaryKey() Field {
 	for _, field := range input.Fields {
 		if field.Primary {
 			return field
 		}
 	}
 	// Default to ID if no primary key is specified
-	return Field{FieldName: "ID", FieldType: "uint", Primary: true, Nullable: false}
+	return Field{FieldName: "ID", FieldType: "string", Primary: true, Nullable: false}
 }
 
-func (input *InputJson) GetPrimaryKeyName() string {
+func (input *Entity) GetPrimaryKeyName() string {
 	return input.GetPrimaryKey().FieldName
 }
 
-func (input *InputJson) GetPrimaryKeyType() string {
+func (input *Entity) GetPrimaryKeyType() string {
 	return convertTypeScriptTypeToGo(input.GetPrimaryKey().FieldType)
 }
 
 // Helper function to convert TypeScript types to Go types
 func convertTypeScriptTypeToGo(tsType string) string {
 	switch strings.ToLower(tsType) {
-	case "string":
+	case "string", "enum", "json":
 		return "string"
 	case "number", "int", "integer":
 		return "int"
-	case "float", "double":
+	case "float", "double", "decimal":
 		return "float64"
 	case "boolean", "bool":
 		return "bool"
@@ -159,15 +158,17 @@ func toSnakeCase(s string) string {
 var templateFuncs = template.FuncMap{
 	"toGoFieldName":             toGoFieldName,
 	"lower":                     func() string { return "" },
+	"snakeCase":                 lo.SnakeCase,
+	"pascalCase":                lo.PascalCase,
 	"convertTypeScriptTypeToGo": convertTypeScriptTypeToGo,
 	"formatGormTags": func(field Field, tableName string) string {
 		var tags []string
-		column := strings.ToLower(field.FieldName)
+		column := lo.SnakeCase(field.FieldName)
 
 		tags = append(tags, fmt.Sprintf("column:%s", column))
 
 		if field.Primary {
-			tags = append(tags, "primaryKey")
+			tags = append(tags, "primaryKey", "type:char(36)")
 		}
 
 		if !field.Nullable && !field.Primary {
@@ -178,7 +179,7 @@ var templateFuncs = template.FuncMap{
 			tags = append(tags, "unique")
 		}
 
-		if field.Default != nil && field.Default != "" {
+		if field.Default != nil && field.Default != "" && !field.Primary {
 			tags = append(tags, fmt.Sprintf("default:%v", field.Default))
 		}
 
@@ -207,33 +208,33 @@ var templateFuncs = template.FuncMap{
 
 		return strings.Join(rules, ",")
 	},
-	"formatRelation": func(relation Relation) string {
+	"formatRelation": func(entityName string, relation Relation) string {
 		switch relation.RelationType {
 		case "OneToOne", "ManyToOne":
 			// Add both the foreign key field and the relationship field with a newline
-			foreignKeyField := fmt.Sprintf("%sId uint `gorm:\"column:%s_id\"`",
+			foreignKeyField := fmt.Sprintf("%sID string `gorm:\"column:%s_id\"`",
 				toGoFieldName(relation.FieldName),
 				toSnakeCase(relation.FieldName))
 
 			relationField := fmt.Sprintf("%s *%s `gorm:\"foreignKey:%s\"`",
 				toGoFieldName(relation.FieldName),
 				relation.RelatedEntity,
-				toGoFieldName(relation.FieldName)+"Id")
+				toGoFieldName(relation.FieldName)+"ID")
 
 			return foreignKeyField + "\n\t" + relationField
 
 		case "OneToMany":
-			return fmt.Sprintf("%s []%s `gorm:\"foreignKey:%sId\"`",
+			return fmt.Sprintf("%s []%s `gorm:\"foreignKey:%sID\"`",
 				toGoFieldName(relation.FieldName),
 				relation.RelatedEntity,
-				strings.TrimSuffix(relation.FieldName, "s"))
+				lo.CoalesceOrEmpty(lo.PascalCase(relation.ForeignKey), lo.PascalCase(entityName)))
 
 		case "ManyToMany":
-			return fmt.Sprintf("%s []%s `gorm:\"many2many:%s_%s\"`",
+			foreignTable := fmt.Sprintf("%s_%s", strings.ToLower(entityName), strings.ToLower(relation.RelatedEntity))
+			return fmt.Sprintf("%s []%s `gorm:\"many2many:%s\"`",
 				toGoFieldName(relation.FieldName),
 				relation.RelatedEntity,
-				strings.ToLower(relation.RelatedEntity),
-				strings.ToLower(strings.TrimSuffix(relation.FieldName, "s")))
+				lo.CoalesceOrEmpty(relation.ForeignKey, foreignTable))
 
 		default:
 			return ""
@@ -242,7 +243,7 @@ var templateFuncs = template.FuncMap{
 	"formatRelationDTO": func(relation Relation) string {
 		switch relation.RelationType {
 		case "OneToOne", "ManyToOne":
-			foreignKeyField := fmt.Sprintf("%sId uint `json:\"%sId,omitempty\"`",
+			foreignKeyField := fmt.Sprintf("%sID string `json:\"%sID,omitempty\"`",
 				toGoFieldName(relation.FieldName),
 				relation.FieldName)
 			relationField := fmt.Sprintf("%s *%sResponse `json:\"%s,omitempty\"`",
@@ -260,7 +261,7 @@ var templateFuncs = template.FuncMap{
 		}
 	},
 	"relatedIDType": func(relation Relation) string {
-		return "uint"
+		return "string"
 	},
 	"getZeroValue": func(typeName string) string {
 		switch strings.ToLower(typeName) {
@@ -298,6 +299,12 @@ func main() {
 		return
 	}
 
+	fmt.Printf("%v\n\n", strings.Join(lo.Map(entities, func(item Entity, index int) string { return item.EntityName }), ","))
+
+	AssignRelations(entities)
+
+	fmt.Printf("%v", strings.Join(lo.Map(entities, func(item Entity, index int) string { return item.Relations[0].ForeignKey }), ","))
+
 	// Create base output directory
 	if err := createOutputDirectories(outputDir); err != nil {
 		fmt.Printf("Error creating output directories: %v\n", err)
@@ -305,7 +312,11 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/space-w-alker/myapp"
+	moduleName := "github.com/Oyinkansolight/NeerDrop/internal/neer-drop/server"
+
+	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
+		fmt.Printf("Error generating generic code: %v", err)
+	}
 
 	// Generate code for each entity
 	for _, entity := range entities {
@@ -318,7 +329,7 @@ func main() {
 }
 
 // parseInputFile reads and parses the input JSON file
-func parseInputFile(inputFile string) ([]InputJson, error) {
+func parseInputFile(inputFile string) ([]Entity, error) {
 	// Read input file
 	inputData, err := os.ReadFile(inputFile)
 	if err != nil {
@@ -326,15 +337,15 @@ func parseInputFile(inputFile string) ([]InputJson, error) {
 	}
 
 	// Parse JSON
-	var entities []InputJson
+	var entities []Entity
 	err = json.Unmarshal(inputData, &entities)
 	if err != nil {
 		// Try parsing as a single entity
-		var singleEntity InputJson
+		var singleEntity Entity
 		if err = json.Unmarshal(inputData, &singleEntity); err != nil {
 			return nil, fmt.Errorf("error parsing JSON: %v", err)
 		}
-		entities = []InputJson{singleEntity}
+		entities = []Entity{singleEntity}
 	}
 
 	return entities, nil
@@ -358,25 +369,52 @@ func createOutputDirectories(outputDir string) error {
 	return nil
 }
 
+func generateGenericCode(outputDir string, moduleName string, data []Entity) error {
+	temp := strings.Split(moduleName, "/")
+	packageName := temp[len(temp)-1]
+	d := struct {
+		Entities    []Entity
+		PackageName string
+		ModuleName  string
+	}{Entities: data, PackageName: packageName, ModuleName: moduleName}
+	if err := generateFileFromTemplate(path.Join(outputDir, "dto", "utils.go"), path.Join("templates", "dto_utils.tmpl"), struct{}{}); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), struct{}{}); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "routes.go"), path.Join("templates", "routes.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d); err != nil {
+		return err
+	}
+	return nil
+}
+
 // generateEntityCode generates code files for a single entity
-func generateEntityCode(entity InputJson, outputDir, moduleName string) error {
+func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 	// Create template data with all necessary fields
 	templateData := struct {
-		*InputJson
+		*Entity
 		ModuleName      string
 		EntityNameLower string
 	}{
-		InputJson:       &entity,
+		Entity:          &entity,
 		ModuleName:      moduleName,
 		EntityNameLower: strings.ToLower(entity.EntityName),
 	}
 
 	// Define file templates
 	templates := map[string]string{
-		filepath.Join(outputDir, "models", strings.ToLower(entity.EntityName)+".go"):            filepath.Join("templates", "model.tmpl"),
-		filepath.Join(outputDir, "dto", strings.ToLower(entity.EntityName)+"_base.go"):          filepath.Join("templates", "dto.tmpl"),
-		filepath.Join(outputDir, "repositories", strings.ToLower(entity.EntityName)+"_base.go"): filepath.Join("templates", "repository.tmpl"),
-		filepath.Join(outputDir, "controllers", strings.ToLower(entity.EntityName)+"_base.go"):  filepath.Join("templates", "controller.tmpl"),
+		filepath.Join(outputDir, "models", lo.SnakeCase(entity.EntityName)+".go"):            filepath.Join("templates", "model.tmpl"),
+		filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+"_base.go"):          filepath.Join("templates", "dto.tmpl"),
+		filepath.Join(outputDir, "repositories", lo.SnakeCase(entity.EntityName)+"_base.go"): filepath.Join("templates", "repository.tmpl"),
+		filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go"):  filepath.Join("templates", "controller.tmpl"),
+	}
+
+	if !fileExists(filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+".go")) {
+		templates[filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+".go")] = filepath.Join("templates", "main.controller.tmpl")
 	}
 
 	// Generate each file from its template
@@ -387,6 +425,11 @@ func generateEntityCode(entity InputJson, outputDir, moduleName string) error {
 	}
 
 	return nil
+}
+
+func fileExists(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil || !os.IsNotExist(err)
 }
 
 // generateFileFromTemplate creates a file from a template with the given data
@@ -403,6 +446,20 @@ func generateFileFromTemplate(filePath, templatePath string, data interface{}) e
 		return fmt.Errorf("error parsing template: %v", err)
 	}
 
+	// Execute the template to a buffer first
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("error executing template: %v", err)
+	}
+
+	// Format the Go code
+	formattedSource, err := format.Source(buf.Bytes())
+	if err != nil {
+		// If formatting fails, we can either return the error or proceed with unformatted code
+		// Here we choose to return the error
+		return fmt.Errorf("error formatting output: %v", err)
+	}
+
 	// Create the file
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -410,10 +467,34 @@ func generateFileFromTemplate(filePath, templatePath string, data interface{}) e
 	}
 	defer file.Close()
 
-	// Execute the template
-	if err := tmpl.Execute(file, data); err != nil {
-		return fmt.Errorf("error executing template: %v", err)
+	// Write the formatted content to the file
+	if _, err := file.Write(formattedSource); err != nil {
+		return fmt.Errorf("error writing to file: %v", err)
 	}
 
 	return nil
+}
+
+func AssignRelations(entities []Entity) {
+	for i := range entities {
+		entity := &entities[i]
+		for j := range entity.Relations {
+			relation := &entity.Relations[j]
+			if relation.ForeignKey != "" {
+				continue
+			}
+			for k := range entities {
+				relEntity := &entities[k]
+				if relation.RelatedEntity == relEntity.EntityName {
+					for l := range relEntity.Relations {
+						relEntityRelation := &relEntity.Relations[l]
+						if relEntityRelation.RelatedEntity == entity.EntityName {
+							relation.ForeignKey = relEntityRelation.FieldName
+							break
+						}
+					}
+				}
+			}
+		}
+	}
 }

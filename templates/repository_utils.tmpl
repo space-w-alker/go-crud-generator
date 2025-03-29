@@ -1,0 +1,75 @@
+package repositories
+
+import (
+	"math"
+
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+// Pagination holds pagination data
+type Pagination struct {
+	Limit      int    `json:"limit,omitempty"`
+	Page       int    `json:"page,omitempty"`
+	Sort       string `json:"sort,omitempty"`
+	SortOrder  string `json:"sort_order,omitempty"`
+	TotalRows  int64  `json:"total_rows"`
+	TotalPages int    `json:"total_pages"`
+}
+
+// New creates a new Pagination instance
+func NewPagination(page int, size int, sort string, sortOrder string) *Pagination {
+	return &Pagination{
+		Limit:     size,
+		Page:      page,
+		Sort:      sort,
+		SortOrder: sortOrder,
+	}
+}
+
+// Paginate is a pure pagination function that only handles pagination logic
+func (p *Pagination) Paginate() func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		// Apply sorting if specified
+		if p.Sort != "" {
+			isDesc := p.SortOrder == "desc"
+			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: p.Sort}, Desc: isDesc})
+		}
+
+		// Apply pagination
+		return db.Offset(p.GetOffset()).Limit(p.GetLimit())
+	}
+}
+
+// Count sets the total rows and pages count
+func (p *Pagination) Count(db *gorm.DB, model interface{}) error {
+	var totalRows int64
+	if err := db.Model(model).Count(&totalRows).Error; err != nil {
+		return err
+	}
+
+	p.TotalRows = totalRows
+	p.TotalPages = int(math.Ceil(float64(totalRows) / float64(p.GetLimit())))
+	return nil
+}
+
+// GetOffset calculates and returns the offset for pagination
+func (p *Pagination) GetOffset() int {
+	return (p.GetPage() - 1) * p.GetLimit()
+}
+
+// GetLimit returns the limit
+func (p *Pagination) GetLimit() int {
+	if p.Limit == 0 {
+		p.Limit = 10 // default limit
+	}
+	return p.Limit
+}
+
+// GetPage returns the current page
+func (p *Pagination) GetPage() int {
+	if p.Page == 0 {
+		p.Page = 1 // default page
+	}
+	return p.Page
+}
