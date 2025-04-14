@@ -74,7 +74,7 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param query query dto.Full{{.EntityName}}Query false "Query parameters"
-// @Success 200 {array} dto.{{.EntityName}}Response
+// @Success 200 {object} dto.Paginated{{.EntityName}}Response
 // @Failure 500 {object} dto.ErrorResponse "Server error"
 // @Router /{{snakeCase .EntityName}} [get]
 // @ID getAll{{.EntityName}}
