@@ -50,7 +50,7 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 }
 
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
-func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query) ([]models.{{.EntityName}}, int64, int64, error) {
+func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, int64, int64, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
 
 	query := r.DB.Model(&models.{{.EntityName}}{})
@@ -63,7 +63,9 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query) ([]m
 		return nil, 0, 0, err
 	}
 
-	if err := query.Scopes(p.Paginate()).Find(&{{.EntityNameLower}}s).Error; err != nil {
+  scopes = append(scopes, p.Paginate())
+
+	if err := query.Scopes(scopes...).Find(&{{.EntityNameLower}}s).Error; err != nil {
 		return nil, 0, 0, err
 	}
 

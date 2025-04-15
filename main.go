@@ -303,8 +303,6 @@ func main() {
 
 	AssignRelations(entities)
 
-	fmt.Printf("%v", strings.Join(lo.Map(entities, func(item Entity, index int) string { return item.Relations[0].ForeignKey }), ","))
-
 	// Create base output directory
 	if err := createOutputDirectories(outputDir); err != nil {
 		fmt.Printf("Error creating output directories: %v\n", err)
@@ -312,7 +310,7 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/Oyinkansolight/NeerDrop/internal/neer-drop/server"
+	moduleName := "github.com/space-w-alker/bus-drop-ng/internal/bus-drop-ng/server"
 
 	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
 		fmt.Printf("Error generating generic code: %v", err)
@@ -387,6 +385,9 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d); err != nil {
 		return err
 	}
 	return nil
