@@ -3,7 +3,7 @@ package dto
 import "time"
 
 type SignUpInput struct {
-	Email       string `json:"email" binding:"required_without=PhoneNumber,email,omitempty"`
+	Email       string `json:"email" binding:"required_without=PhoneNumber,omitempty,email"`
 	PhoneNumber string `json:"phoneNumber" binding:"required_without=Email,omitempty"`
 	Password    string `json:"password" binding:"required,min=8"`
 	FullName    string `json:"fullName" binding:"required"`
@@ -14,7 +14,7 @@ type SignUpInput struct {
 }
 
 type SignInInput struct {
-	Email       string `json:"email" binding:"required_without=PhoneNumber,email,omitempty"`
+	Email       string `json:"email" binding:"required_without=PhoneNumber,omitempty,email"`
 	PhoneNumber string `json:"phoneNumber" binding:"required_without=Email,omitempty"`
 	Password    string `json:"password" binding:"required"`
 }

@@ -9,7 +9,7 @@ import (
 )
 
 var (
-  Err{{.EntityName}}NotFound = errors.New("{{.EntityNameLower}} not found")
+  Err{{.EntityName}}NotFound = errors.New("{{snakeCase .EntityName}} not found")
 )
 
 // {{.EntityName}}Repository handles database operations for {{.EntityName}}
