@@ -160,6 +160,7 @@ var templateFuncs = template.FuncMap{
 	"lower":                     func() string { return "" },
 	"snakeCase":                 lo.SnakeCase,
 	"pascalCase":                lo.PascalCase,
+	"camelCase":                 lo.CamelCase,
 	"convertTypeScriptTypeToGo": convertTypeScriptTypeToGo,
 	"formatGormTags": func(field Field, tableName string) string {
 		var tags []string
@@ -388,6 +389,12 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "auth_service.go"), path.Join("templates", "auth_service.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "controllers", "auth_controller.go"), path.Join("templates", "auth_controller.tmpl"), d); err != nil {
 		return err
 	}
 	return nil

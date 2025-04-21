@@ -24,7 +24,7 @@ func ({{.EntityNameLower}} *{{.EntityName}}) TableName() string {
 	return "{{.GetTableName}}"
 }
 
-func ({{.EntityNameLower}} *{{.EntityName}}) BeforeCreate(tx *gorm.DB) (err error) {
+func ({{.EntityNameLower}} *{{.EntityName}}) BeforeCreate(_ *gorm.DB) (err error) {
   {{.EntityNameLower}}.{{toGoFieldName .GetPrimaryKeyName}} = uuid.New().String()
   return
 }

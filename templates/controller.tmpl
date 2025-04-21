@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"{{.ModuleName}}/dto"
 	"{{.ModuleName}}/repositories"
-	"{{.ModuleName}}/models"
 )
 
 // {{.EntityName}}Controller handles HTTP requests for {{.EntityName}}
@@ -64,7 +63,7 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 		return
 	}
 	
-	ctx.JSON(http.StatusCreated, to{{.EntityName}}Response({{.EntityName}}))
+	ctx.JSON(http.StatusCreated, repositories.To{{.EntityName}}Response({{.EntityName}}))
 }
 
 // GetAll handles retrieving all {{.EntityNamePlural}}
@@ -93,13 +92,13 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 	}
 	
 	// Convert to response DTOs
-  response := make([]*dto.{{.EntityName}}Response, 0, 20)
+  response := make([]*dto.{{.EntityName}}Response, 0, len({{.EntityNameLower}}s))
 	for _, {{.EntityName}} := range {{.EntityNameLower}}s {
-		response = append(response, to{{.EntityName}}Response(&{{.EntityName}}))
+		response = append(response, repositories.To{{.EntityName}}Response(&{{.EntityName}}))
 	}
 	
   paginated := dto.Paginated{{.EntityName}}Response{Items: response, PaginationResponse: dto.PaginationResponse{
-		PageSize: lo.CoalesceOrEmpty(query.Size, 10), TotalPages: int(totalPages), TotalItemCount: int(total),
+		PageSize: lo.CoalesceOrEmpty(query.Size, repositories.DefaultPageSize), TotalPages: int(totalPages), TotalItemCount: int(total),
 	}}
 	ctx.JSON(http.StatusOK, paginated)
 }
@@ -125,7 +124,7 @@ func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 		return
 	}
 	
-	ctx.JSON(http.StatusOK, to{{.EntityName}}Response({{.EntityName}}))
+	ctx.JSON(http.StatusOK, repositories.To{{.EntityName}}Response({{.EntityName}}))
 }
 
 // Update handles updating an existing {{.EntityName}}
@@ -157,7 +156,7 @@ func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 		return
 	}
 	
-	ctx.JSON(http.StatusOK, to{{.EntityName}}Response({{.EntityName}}))
+	ctx.JSON(http.StatusOK, repositories.To{{.EntityName}}Response({{.EntityName}}))
 }
 
 // Delete handles removing a {{.EntityName}}
@@ -197,23 +196,6 @@ func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context) {
 }
 {{- end}}
 
-// Helper functions
-func to{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
-	if model == nil {
-		return nil
-	}
-	return &dto.{{.EntityName}}Response{
-		{{- range .Fields}}
-		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
-		{{- end}}
-		{{- range .Relations}}
-    {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
-    {{toGoFieldName .FieldName}}: to{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
-		{{- end}}
-		{{- end}}
-	}
-}
 
 func parse{{.EntityName}}PrimaryKey(param string) {{.GetPrimaryKeyType}} {
 	{{- if eq (.GetPrimaryKeyType) "uint" "int" "int64" "uint64"}}

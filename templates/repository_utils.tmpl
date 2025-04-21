@@ -7,6 +7,11 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+const (
+	DefaultPageSize = 10
+	DefaultPage     = 1
+)
+
 // Pagination holds pagination data
 type Pagination struct {
 	Limit      int    `json:"limit,omitempty"`
@@ -61,7 +66,7 @@ func (p *Pagination) GetOffset() int {
 // GetLimit returns the limit
 func (p *Pagination) GetLimit() int {
 	if p.Limit == 0 {
-		p.Limit = 10 // default limit
+		p.Limit = DefaultPageSize // default limit
 	}
 	return p.Limit
 }
@@ -69,7 +74,7 @@ func (p *Pagination) GetLimit() int {
 // GetPage returns the current page
 func (p *Pagination) GetPage() int {
 	if p.Page == 0 {
-		p.Page = 1 // default page
+		p.Page = DefaultPage // default page
 	}
 	return p.Page
 }

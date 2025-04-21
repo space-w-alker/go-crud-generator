@@ -10,9 +10,9 @@ import (
 
 func SetupControllersAndRoutes(r *gin.RouterGroup, db *gorm.DB) {
 	{{- range .Entities}}
-	{{.EntityNameLower}}Repo := repositories.New{{.EntityName}}Repository(db)
-	{{.EntityNameLower}}Controller := controllers.New{{.EntityName}}Controller({{.EntityNameLower}}Repo)
-	{{.EntityNameLower}}Controller.RegisterRoutes(r)
-	{{.EntityNameLower}}Controller.RegisterMainRoutes(r)
+	{{camelCase .EntityName}}Repo := repositories.New{{.EntityName}}Repository(db)
+	{{camelCase .EntityName}}Controller := controllers.New{{.EntityName}}Controller({{camelCase .EntityName}}Repo)
+	{{camelCase .EntityName}}Controller.RegisterRoutes(r)
+	{{camelCase .EntityName}}Controller.RegisterMainRoutes(r)
   {{- end}}
 }

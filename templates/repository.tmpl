@@ -118,3 +118,21 @@ func (r *{{.EntityName}}Repository) Delete(id {{.GetPrimaryKeyType}}) error {
 	return nil
 }
 
+
+// Helper functions
+func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
+	if model == nil {
+		return nil
+	}
+	return &dto.{{.EntityName}}Response{
+		{{- range .Fields}}
+		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
+		{{- end}}
+		{{- range .Relations}}
+    {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
+    {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
+		{{- end}}
+		{{- end}}
+	}
+}

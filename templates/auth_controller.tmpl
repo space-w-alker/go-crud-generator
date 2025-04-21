@@ -1,0 +1,144 @@
+package controllers
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+  "{{.ModuleName}}/dto"
+	"{{.ModuleName}}/repositories"
+)
+
+type AuthController struct {
+	authService *repositories.AuthService
+}
+
+func NewAuthController(authService *repositories.AuthService) *AuthController {
+	return &AuthController{
+		authService: authService,
+	}
+}
+
+// SignUp handles user registration
+// @Summary Register a new user
+// @Description Register a new user with the provided information
+// @ID signUp
+// @Accept json
+// @Produce json
+// @Param input body dto.SignUpInput true "User Registration Information"
+// @Success 201 {object} dto.AuthResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Router /auth/signup [post]
+func (c *AuthController) SignUp(ctx *gin.Context) {
+	var input dto.SignUpInput
+
+	// Bind and validate input
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Call service to create user
+	response, err := c.authService.SignUp(input)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, response)
+}
+
+// SignIn handles user authentication
+// @Summary Authenticate user
+// @Description Authenticate a user with credentials and return a token
+// @ID signIn
+// @Accept json
+// @Produce json
+// @Param input body dto.SignInInput true "User Credentials"
+// @Success 200 {object} dto.AuthResponse
+// @Failure 400 {object} dto.ErrorResponse
+// @Failure 401 {object} dto.ErrorResponse
+// @Router /auth/signin [post]
+func (c *AuthController) SignIn(ctx *gin.Context) {
+	var input dto.SignInInput
+
+	// Bind and validate input
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Call service to authenticate user
+	response, err := c.authService.SignIn(input)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, response)
+}
+
+// RefreshToken godoc
+// @Summary Refresh access token
+// @Description Use a valid refresh token to obtain a new access token
+// @ID refreshToken
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.RefreshTokenInput true "Refresh token data"
+// @Success 200 {object} dto.AuthResponse "Successful token refresh"
+// @Failure 400 {object} dto.ErrorResponse "Invalid input"
+// @Failure 401 {object} dto.ErrorResponse "Invalid refresh token"
+// @Failure 403 {object} dto.ErrorResponse "Account deactivated"
+// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Router /auth/refresh-token [post]
+func (c *AuthController) RefreshToken(ctx *gin.Context) {
+	var request dto.RefreshTokenInput
+	if err := ctx.ShouldBindJSON(&request); err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error: "Invalid request format",
+		})
+		return
+	}
+
+	// Convert request to service input
+	input := dto.RefreshTokenInput{
+		RefreshToken: request.RefreshToken,
+	}
+
+	// Call the service function
+	response, err := c.authService.RefreshToken(input)
+	if err != nil {
+		statusCode := http.StatusInternalServerError
+		errorMessage := "Failed to refresh token"
+
+		// Handle specific errors with errors.Is for proper handling of wrapped errors
+		if errors.Is(err, repositories.ErrInvalidToken) ||
+			errors.Is(err, repositories.ErrFailedToExtractClaims) ||
+			errors.Is(err, repositories.ErrUnexpectedSigningMethod) {
+			statusCode = http.StatusUnauthorized
+			errorMessage = "Invalid refresh token"
+		} else if errors.Is(err, repositories.ErrAccountDeactivated) {
+			statusCode = http.StatusForbidden
+			errorMessage = "Account is deactivated"
+		}
+
+		ctx.JSON(statusCode, dto.ErrorResponse{
+			Error: errorMessage,
+		})
+		return
+	}
+
+	// Return the new tokens
+	ctx.JSON(http.StatusOK, response)
+}
+
+// RegisterRoutes registers all auth routes
+func (c *AuthController) RegisterRoutes(router *gin.RouterGroup) {
+	authGroup := router.Group("/auth")
+	{
+		authGroup.POST("/signup", c.SignUp)
+		authGroup.POST("/signin", c.SignIn)
+		authGroup.POST("refresh-token", c.RefreshToken)
+	}
+}

@@ -1,0 +1,369 @@
+package repositories
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"{{.ModuleName}}/dto"
+	"{{.ModuleName}}/models"
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
+)
+
+// Error constants
+var (
+	ErrEmailAlreadyExists       = errors.New("user with this email already exists")
+	ErrPhoneNumberAlreadyExists = errors.New("user with this phone number already exists")
+	ErrInvalidCredentials       = errors.New("invalid email or password")
+	ErrMissingCredentials       = errors.New("either email or phone number must be provided")
+	ErrAccountDeactivated       = errors.New("account is deactivated")
+	ErrInvalidToken             = errors.New("invalid token")
+	ErrFailedToExtractClaims    = errors.New("failed to extract claims")
+	ErrUserDataNotFoundInToken  = errors.New("user data not found in token")
+	ErrUnexpectedSigningMethod  = errors.New("unexpected signing method")
+)
+
+// Time constants
+const (
+	accessTokenExpirationMinutes = 15
+	refreshTokenExpirationDays   = 7
+)
+
+type AuthService struct {
+	DB *gorm.DB
+}
+
+func NewAuthService(db *gorm.DB) *AuthService {
+	return &AuthService{DB: db}
+}
+
+func (s *AuthService) SignUp(input dto.SignUpInput) (*dto.AuthResponse, error) {
+	// Check if at least one of email or phone number is provided
+	if input.Email == "" && input.PhoneNumber == "" {
+		return nil, ErrMissingCredentials
+	}
+	// Check if user already exists with the given email if provided
+	var count int64
+	if input.Email != "" {
+		if err := s.DB.Model(&models.User{}).Where("email = ?", input.Email).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("failed to check existing users: %w", err)
+		}
+		if count > 0 {
+			return nil, ErrEmailAlreadyExists
+		}
+	}
+
+	// Check if phone number already exists if provided
+	if input.PhoneNumber != "" {
+		if err := s.DB.Model(&models.User{}).Where("phone_number = ?", input.PhoneNumber).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("failed to check existing users: %w", err)
+		}
+		if count > 0 {
+			return nil, ErrPhoneNumberAlreadyExists
+		}
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	// Create user
+	user := models.User{
+		Email:              input.Email,
+		PhoneNumber:        input.PhoneNumber,
+		PasswordHash:       string(hashedPassword),
+		FullName:           input.FullName,
+		UserType:           input.UserType,
+		Address:            input.Address,
+		State:              input.State,
+		City:               input.City,
+		DateCreated:        time.Now(),
+		IsVerified:         false,
+		VerificationStatus: "pending",
+		IsActive:           true,
+	}
+
+	// Save user to database
+	if err := s.DB.Create(&user).Error; err != nil {
+		return nil, fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Generate tokens
+	accessToken, err := s.GenerateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create auth response
+	response := &dto.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return response, nil
+}
+
+func (s *AuthService) SignIn(input dto.SignInInput) (*dto.AuthResponse, error) {
+	// Check if at least one of email or phone number is provided
+	if input.Email == "" && input.PhoneNumber == "" {
+		return nil, ErrMissingCredentials
+	}
+
+	// Find user by email or phone number
+	var user models.User
+	query := s.DB.Where("1 = 0") // Start with a query that returns nothing
+
+	if input.Email != "" {
+		query = query.Or("email = ?", input.Email)
+	}
+
+	if input.PhoneNumber != "" {
+		query = query.Or("phone_number = ?", input.PhoneNumber)
+	}
+
+	if err := query.First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrInvalidCredentials
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		return nil, ErrAccountDeactivated
+	}
+
+	// Verify password
+	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(input.Password))
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Generate tokens
+	accessToken, err := s.GenerateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken, err := s.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create auth response
+	response := &dto.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return response, nil
+}
+
+// RefreshTokenInput represents the input for token refresh
+
+// RefreshToken validates a refresh token and issues a new access token
+func (s *AuthService) RefreshToken(input dto.RefreshTokenInput) (*dto.AuthResponse, error) {
+	// Parse the refresh token
+	token, err := jwt.Parse(input.RefreshToken, func(token *jwt.Token) (interface{}, error) {
+		// Validate the signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrUnexpectedSigningMethod
+		}
+
+		// Get the JWT refresh secret key from environment variable
+		jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
+		return []byte(jwtRefreshSecret), nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse refresh token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, ErrFailedToExtractClaims
+	}
+
+	// Verify this is a refresh token
+	tokenType, ok := claims["type"].(string)
+	if !ok || tokenType != "refresh" {
+		return nil, ErrInvalidToken
+	}
+
+	// Extract user ID from claims
+	userID, ok := claims["user_id"].(string)
+	if !ok {
+		return nil, ErrUserDataNotFoundInToken
+	}
+
+	// Fetch the user from the database
+	var user models.User
+	if err := s.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	// Check if user is active
+	if !user.IsActive {
+		return nil, ErrAccountDeactivated
+	}
+
+	// Generate a new access token
+	accessToken, err := s.GenerateAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate a new refresh token
+	refreshToken, err := s.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create auth response with both tokens
+	response := &dto.AuthResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+
+	return response, nil
+}
+
+func (s *AuthService) GenerateAccessToken(user models.User) (string, error) {
+	// Set expiration time for the token
+	expirationTime := time.Now().Add(accessTokenExpirationMinutes * time.Minute) // 15 minutes
+
+	// Convert user to map to include in claims
+	userJSON, err := json.Marshal(user)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal user data: %w", err)
+	}
+
+	var userMap map[string]interface{}
+	if err := json.Unmarshal(userJSON, &userMap); err != nil {
+		return "", fmt.Errorf("failed to unmarshal user data: %w", err)
+	}
+
+	// Create claims with full user data and expiration time
+	claims := jwt.MapClaims{
+		"user":    userMap,
+		"user_id": user.ID, // Keep user_id for backward compatibility
+		"exp":     expirationTime.Unix(),
+		"iat":     time.Now().Unix(),
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Get the JWT secret key from environment variable
+	jwtSecret := os.Getenv("JWT_SECRET")
+
+	// Generate the token string
+	tokenString, err := token.SignedString([]byte(jwtSecret))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+func (s *AuthService) GenerateRefreshToken(userID string) (string, error) {
+	// Set expiration time for the refresh token
+	expirationTime := time.Now().Add(refreshTokenExpirationDays * 24 * time.Hour) // 7 days
+
+	// Create claims with user ID and expiration time
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"exp":     expirationTime.Unix(),
+		"iat":     time.Now().Unix(),
+		"type":    "refresh",
+	}
+
+	// Create token with claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Get the JWT refresh secret key from environment variable
+	jwtRefreshSecret := os.Getenv("JWT_REFRESH_SECRET")
+
+	// Generate the token string
+	tokenString, err := token.SignedString([]byte(jwtRefreshSecret))
+	if err != nil {
+		return "", fmt.Errorf("failed to sign refresh token: %w", err)
+	}
+
+	return tokenString, nil
+}
+
+func (s *AuthService) ValidateAccessToken(tokenString string) (*models.User, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Validate the signing method
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, ErrUnexpectedSigningMethod
+		}
+
+		// Get the JWT secret key from environment variable
+		jwtSecret := os.Getenv("JWT_SECRET")
+
+		return []byte(jwtSecret), nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse token: %w", err)
+	}
+
+	if !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	// Extract claims
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, ErrFailedToExtractClaims
+	}
+
+	// Extract user data from claims
+	userData, ok := claims["user"].(map[string]interface{})
+	if !ok {
+		// Fallback to old token format where only user_id was stored
+		userID, ok := claims["user_id"].(string)
+		if !ok {
+			return nil, ErrUserDataNotFoundInToken
+		}
+
+		// Fetch user from database using ID
+		var user models.User
+		if err := s.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+			return nil, fmt.Errorf("failed to get user from ID in token: %w", err)
+		}
+		return &user, nil
+	}
+
+	// Convert map back to user object
+	userJSON, err := json.Marshal(userData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal user data from token: %w", err)
+	}
+
+	var user models.User
+	if err := json.Unmarshal(userJSON, &user); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal user data from token: %w", err)
+	}
+
+	return &user, nil
+}
