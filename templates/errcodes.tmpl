@@ -1,0 +1,29 @@
+// Package errcodes contains all the error code constants used in the application
+//
+//nolint:gosec
+package errcodes
+
+// Auth error codes
+const (
+	CodeEmailExists               = "auth/email_exists"
+	CodePhoneExists               = "auth/phone_exists"
+	CodeInvalidCredentials        = "auth/invalid_credentials"
+	CodeMissingCredentials        = "auth/missing_credentials"
+	CodeAccountDeactivated        = "auth/account_deactivated"
+	CodeInvalidToken              = "auth/invalid_token"
+	CodeExpiredToken              = "auth/token_expired"
+	CodeExtractClaimsFailed       = "auth/extract_claims_failed"
+	CodeNoUserData                = "auth/no_user_data"
+	CodeUnexpectedSigning         = "auth/unexpected_signing"
+	CodeDBError                   = "db/error"
+	CodePasswordHashFailed        = "auth/password_hash_failed"
+	CodeUserCreationFailed        = "auth/user_creation_failed"
+	CodeTokenParseFailed          = "auth/token_parse_failed"
+	CodeJSONMarshalFailed         = "auth/json_marshal_failed"
+	CodeJSONUnmarshalFailed       = "auth/json_unmarshal_failed"
+	CodeTokenSigningFailed        = "auth/token_signing_failed"
+	CodeRefreshTokenSigningFailed = "auth/refresh_token_signing_failed"
+	CodeInvalidRequest            = "server/invalid-request"
+	CodeServerError               = "server/error"
+	CodeNotFound                  = "server/not_found"
+)

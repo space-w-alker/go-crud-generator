@@ -12,7 +12,7 @@ type {{.EntityName}} struct {
   gorm.Model
   {{$entityName := .EntityName}}
 	{{- range .Fields}}
-	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `{{formatGormTags . $.TableName}} {{formatValidationTags .}}`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `{{formatGormTags . $.TableName}} {{formatValidationTags .}}`
 	{{- end}}
 	{{- range .Relations}}
 	{{formatRelation $entityName .}}
@@ -25,6 +25,7 @@ func ({{.EntityNameLower}} *{{.EntityName}}) TableName() string {
 }
 
 func ({{.EntityNameLower}} *{{.EntityName}}) BeforeCreate(_ *gorm.DB) (err error) {
-  {{.EntityNameLower}}.{{toGoFieldName .GetPrimaryKeyName}} = uuid.New().String()
+	id := uuid.New().String()
+  {{.EntityNameLower}}.{{toGoFieldName .GetPrimaryKeyName}} = &id
   return
 }

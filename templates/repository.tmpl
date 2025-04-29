@@ -3,13 +3,11 @@ package repositories
 
 import (
 	"errors"
+	"{{.ModuleName}}/errs"
+	"{{.ModuleName}}/errs/errcodes"
 	"{{.ModuleName}}/models"
 	"{{.ModuleName}}/dto"
 	"gorm.io/gorm"
-)
-
-var (
-  Err{{.EntityName}}NotFound = errors.New("{{snakeCase .EntityName}} not found")
 )
 
 // {{.EntityName}}Repository handles database operations for {{.EntityName}}
@@ -35,7 +33,7 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 
   {{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-  if create.{{toGoFieldName .FieldName}}ID != "" {
+  if create.{{toGoFieldName .FieldName}}ID != nil {
 	  {{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
   }
   {{- end}}
@@ -43,33 +41,33 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 	
 	// Save to database
 	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
-		return nil, err
+    return nil, errs.NewError(errcodes.CodeDBError, "Failed to create {{.EntityNameLower}}").Occurred()
 	}
 	
 	return {{.EntityNameLower}}, nil
 }
 
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
-func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, int64, int64, error) {
+func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, int, int, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
 
 	query := r.DB.Model(&models.{{.EntityName}}{})
 
 	query.Where(&(q.{{.EntityName}}Query))
 
-	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
+	p := NewPagination(*q.Page, *q.Size, *q.SortBy, *q.SortOrder)
 
 	if err := p.Count(query, &models.{{.EntityName}}{}); err != nil {
-		return nil, 0, 0, err
+    return nil, 0, 0, errs.NewError(errcodes.CodeDBError, "Failed to count total {{.EntityNameLower}} records").Occurred()
 	}
 
   scopes = append(scopes, p.Paginate())
 
 	if err := query.Scopes(scopes...).Find(&{{.EntityNameLower}}s).Error; err != nil {
-		return nil, 0, 0, err
+		return nil, 0, 0, errs.NewError(errcodes.CodeDBError, "Failed to retrieve {{.EntityNameLower}} records").Occurred()
 	}
 
-	return {{.EntityNameLower}}s, p.TotalRows, int64(p.TotalPages), nil
+	return {{.EntityNameLower}}s, p.TotalRows, p.TotalPages, nil
 }
 
 // GetByID retrieves a single {{.EntityName}} by ID
@@ -78,11 +76,39 @@ func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}) (*models.
 	
 	if err := r.DB.First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, Err{{.EntityName}}NotFound
+			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
 		}
-		return nil, err
+		return nil, errs.NewError(errcodes.CodeDBError, "Failed to retrieve {{.EntityNameLower}}").Occurred()
 	}
 	
+	return &{{.EntityNameLower}}, nil
+}
+
+// GetByEmail retrieves a single {{.EntityName}} by email
+func (r *{{.EntityName}}Repository) GetByEmail(email string) (*models.{{.EntityName}}, error) {
+	var {{.EntityNameLower}} models.{{.EntityName}}
+
+	if err := r.DB.First(&{{.EntityNameLower}}, "email = ?", email).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
+		}
+		return nil, errs.NewError(errcodes.CodeDBError, "Failed to retrieve {{.EntityNameLower}} by email").Occurred()
+	}
+
+	return &{{.EntityNameLower}}, nil
+}
+
+// GetByPhoneNumber retrieves a single {{.EntityName}} by phone number
+func (r *{{.EntityName}}Repository) GetByPhoneNumber(phoneNumber string) (*models.{{.EntityName}}, error) {
+	var {{.EntityNameLower}} models.{{.EntityName}}
+
+	if err := r.DB.First(&{{.EntityNameLower}}, "phone_number = ?", phoneNumber).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
+		}
+		return nil, errs.NewError(errcodes.CodeDBError, "Failed to retrieve {{.EntityNameLower}} by phone number").Occurred()
+	}
+
 	return &{{.EntityNameLower}}, nil
 }
 
@@ -94,7 +120,7 @@ func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dt
 	}
 	
   if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
-		return nil, err
+		return nil, errs.NewError(errcodes.CodeDBError, "Failed to update {{.EntityNameLower}}").Occurred()
 	}
 
 	// Save changes
@@ -106,12 +132,12 @@ func (r *{{.EntityName}}Repository) Delete(id {{.GetPrimaryKeyType}}) error {
 	{{- if .AdditionalFeatures.SoftDelete}}
 	// Soft delete
 	if err := r.DB.Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
-		return err
+		return errs.NewError(errcodes.CodeDBError, "Failed to delete {{.EntityNameLower}}").Occurred()
 	}
 	{{- else}}
 	// Hard delete
 	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
-		return err
+		return errs.NewError(errcodes.CodeDBError, "Failed to delete {{.EntityNameLower}}").Occurred()
 	}
 	{{- end}}
 	

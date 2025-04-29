@@ -8,12 +8,12 @@ import (
 type {{.EntityName}}Create struct {
 	{{- range .Fields}}
 	{{- if not .Primary}}
-	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
 	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
+	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
 }
@@ -22,12 +22,12 @@ type {{.EntityName}}Create struct {
 type {{.EntityName}}Update struct {
 	{{- range .Fields}}
 	{{- if not .Primary}}
-	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty"`
 	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
+	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
 }
@@ -35,7 +35,7 @@ type {{.EntityName}}Update struct {
 // {{.EntityName}}Response DTO for responding with {{.EntityName}} data
 type {{.EntityName}}Response struct {
 	{{- range .Fields}}
-	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
@@ -53,12 +53,12 @@ type Paginated{{.EntityName}}Response struct {
 type {{.EntityName}}Query struct {
   {{- range .Fields}}
 	{{- if .FilterBy}}
-	{{toGoFieldName .FieldName}} {{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
 	{{- end}}
   {{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-	{{toGoFieldName .FieldName}}ID {{relatedIDType .}} `form:"{{.FieldName}}ID,omitempty" json:"{{.FieldName}}ID,omitempty"`
+	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `form:"{{.FieldName}}ID,omitempty" json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
 }

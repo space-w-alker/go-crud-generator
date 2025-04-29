@@ -1,0 +1,76 @@
+
+package errs
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+	"time"
+
+	"{{.ModuleName}}/errs/errcodes"
+)
+
+// ServerError represents an error with code, message, and timestamp
+type ServerError struct {
+	Code      string    `json:"code"`
+	Message   string    `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// Error implements the error interface
+func (e *ServerError) Error() string {
+	return fmt.Sprintf("[Code: %s] %s (at %s)", e.Code, e.Message, e.Timestamp.Format(time.RFC3339))
+}
+
+func (e *ServerError) Occurred() *ServerError {
+	e.Timestamp = time.Now()
+	return e
+}
+
+// NewError creates a new CustomError with the current timestamp
+func NewError(code string, message string) *ServerError {
+	return &ServerError{
+		Code:      code,
+		Message:   message,
+		Timestamp: time.Now(),
+	}
+}
+
+func GetStatusCode(err error) int {
+	// Check if error is or wraps a ServerError
+	var serverErr *ServerError
+	if errors.As(err, &serverErr) {
+		// Use the code from ServerError to determine HTTP status
+		errCode := serverErr.Code
+
+		switch errCode {
+		// Auth errors
+		case errcodes.CodeEmailExists, errcodes.CodePhoneExists:
+			return http.StatusConflict // 409 - resource already exists
+
+		case errcodes.CodeInvalidCredentials, errcodes.CodeMissingCredentials,
+			errcodes.CodeInvalidToken, errcodes.CodeExtractClaimsFailed,
+			errcodes.CodeUnexpectedSigning, errcodes.CodeTokenParseFailed:
+			return http.StatusUnauthorized // 401
+
+		case errcodes.CodeAccountDeactivated:
+			return http.StatusForbidden // 403
+
+		case errcodes.CodeNoUserData, errcodes.CodeNotFound:
+			return http.StatusNotFound // 404
+
+		case errcodes.CodeDBError, errcodes.CodePasswordHashFailed,
+			errcodes.CodeUserCreationFailed, errcodes.CodeJSONMarshalFailed,
+			errcodes.CodeJSONUnmarshalFailed, errcodes.CodeTokenSigningFailed,
+			errcodes.CodeRefreshTokenSigningFailed, errcodes.CodeServerError:
+			return http.StatusInternalServerError // 500
+
+		case errcodes.CodeInvalidRequest:
+			return http.StatusBadRequest // 400
+
+		default:
+			return http.StatusInternalServerError // 500
+		}
+	}
+	return http.StatusInternalServerError // 500
+}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	
 	"github.com/gin-gonic/gin"
+	"{{.ModuleName}}/errs"
 	"{{.ModuleName}}/dto"
 	"{{.ModuleName}}/repositories"
 )
@@ -59,7 +60,7 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 	
 	{{.EntityName}}, err := c.repository.Create(&input)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(errs.GetStatusCode(err), err)
 		return
 	}
 	
@@ -87,7 +88,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 	
 	{{.EntityNameLower}}s, total, totalPages, err := c.repository.GetAll(&query)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(errs.GetStatusCode(err), err)
 		return
 	}
 	
@@ -98,7 +99,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 	}
 	
   paginated := dto.Paginated{{.EntityName}}Response{Items: response, PaginationResponse: dto.PaginationResponse{
-		PageSize: lo.CoalesceOrEmpty(query.Size, repositories.DefaultPageSize), TotalPages: int(totalPages), TotalItemCount: int(total),
+		PageSize: lo.CoalesceOrEmpty(*query.Size, repositories.DefaultPageSize), TotalPages: totalPages, TotalItemCount: total,
 	}}
 	ctx.JSON(http.StatusOK, paginated)
 }
@@ -120,7 +121,7 @@ func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 	
 	{{.EntityName}}, err := c.repository.GetByID(id)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ctx.JSON(errs.GetStatusCode(err), err)
 		return
 	}
 	
@@ -152,7 +153,7 @@ func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 	
 	{{.EntityName}}, err := c.repository.Update(id, &input)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		ctx.JSON(errs.GetStatusCode(err), err)
 		return
 	}
 	
@@ -175,7 +176,7 @@ func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	
 	if err := c.repository.Delete(id); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		ctx.JSON(errs.GetStatusCode(err), err)
 		return
 	}
 	

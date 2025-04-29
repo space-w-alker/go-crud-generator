@@ -213,7 +213,7 @@ var templateFuncs = template.FuncMap{
 		switch relation.RelationType {
 		case "OneToOne", "ManyToOne":
 			// Add both the foreign key field and the relationship field with a newline
-			foreignKeyField := fmt.Sprintf("%sID string `gorm:\"column:%s_id\"`",
+			foreignKeyField := fmt.Sprintf("%sID *string `gorm:\"column:%s_id\"`",
 				toGoFieldName(relation.FieldName),
 				toSnakeCase(relation.FieldName))
 
@@ -244,7 +244,7 @@ var templateFuncs = template.FuncMap{
 	"formatRelationDTO": func(relation Relation) string {
 		switch relation.RelationType {
 		case "OneToOne", "ManyToOne":
-			foreignKeyField := fmt.Sprintf("%sID string `json:\"%sID,omitempty\"`",
+			foreignKeyField := fmt.Sprintf("%sID *string `json:\"%sID,omitempty\"`",
 				toGoFieldName(relation.FieldName),
 				relation.FieldName)
 			relationField := fmt.Sprintf("%s *%sResponse `json:\"%s,omitempty\"`",
@@ -357,6 +357,9 @@ func createOutputDirectories(outputDir string) error {
 		filepath.Join(outputDir, "controllers"),
 		filepath.Join(outputDir, "repositories"),
 		filepath.Join(outputDir, "dto"),
+		filepath.Join(outputDir, "middleware"),
+		filepath.Join(outputDir, "errs"),
+		filepath.Join(outputDir, "errs", "errcodes"),
 	}
 
 	for _, dir := range dirs {
@@ -395,6 +398,15 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "controllers", "auth_controller.go"), path.Join("templates", "auth_controller.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs", "errs.go"), path.Join("templates", "errs.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d); err != nil {
+		return err
+	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "middleware.go"), path.Join("templates", "middleware.tmpl"), d); err != nil {
 		return err
 	}
 	return nil

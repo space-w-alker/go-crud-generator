@@ -18,7 +18,7 @@ type Pagination struct {
 	Page       int    `json:"page,omitempty"`
 	Sort       string `json:"sort,omitempty"`
 	SortOrder  string `json:"sort_order,omitempty"`
-	TotalRows  int64  `json:"total_rows"`
+	TotalRows  int    `json:"total_rows"`
 	TotalPages int    `json:"total_pages"`
 }
 
@@ -53,7 +53,7 @@ func (p *Pagination) Count(db *gorm.DB, model interface{}) error {
 		return err
 	}
 
-	p.TotalRows = totalRows
+	p.TotalRows = int(totalRows)
 	p.TotalPages = int(math.Ceil(float64(totalRows) / float64(p.GetLimit())))
 	return nil
 }
