@@ -29,6 +29,10 @@ function convertToTargetFormat(inputJson) {
         field.unique = true;
       }
 
+      if (fieldData.searchable) {
+        field.searchable = true;
+      }
+
       if (fieldData.nullable) {
         field.nullable = true;
       }
@@ -45,9 +49,7 @@ function convertToTargetFormat(inputJson) {
           fieldName: pascalToCamel(rel.name),
           nullable: false, // Default value, could be adjusted based on your rules
           cascade: true, // Default value
-          deleteBehavior: "CASCADE", // Default value
         };
-
         if (rel.type === "one-to-many") {
           const arr = rel.toField.split("_");
           relation.foreignKey = pascalToCamel(`${arr.slice(0, -1).join("_")}`);

@@ -64,8 +64,10 @@ func (r *{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Cre
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
 func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
+  scopes = append(scopes, ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}))
 
 	query := r.DB.Model(&models.{{.EntityName}}{})
+	query.Scopes(scopes...)
 
 	query.Where(&(q.{{.EntityName}}Query))
 
@@ -75,9 +77,7 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
-  scopes = append(scopes, p.Paginate())
-
-	if err := query.Scopes(scopes...).Find(&{{.EntityNameLower}}s).Error; err != nil {
+	if err := query.Scopes(p.Paginate()).Find(&{{.EntityNameLower}}s).Error; err != nil {
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 

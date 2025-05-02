@@ -1,7 +1,9 @@
 package repositories
 
 import (
+	"fmt"
 	"math"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -87,4 +89,25 @@ func (p *Pagination) GetPage() int {
 		p.Page = &d // default page
 	}
 	return *p.Page
+}
+
+// ILikeAny creates a WHERE condition that performs a case-insensitive LIKE search
+// across multiple columns. Returns records where ANY of the columns match the value.
+func ILikeAny(value string, columns ...string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if len(columns) == 0 || value == nil || *value == "" {
+			return db
+		}
+
+		searchValue := "%" + value + "%"
+		conditions := make([]string, len(columns))
+		args := make([]interface{}, len(columns))
+
+		for i, column := range columns {
+			conditions[i] = fmt.Sprintf("LOWER(%s) LIKE LOWER(?)", column)
+			args[i] = searchValue
+		}
+
+		return db.Where(strings.Join(conditions, " OR "), args...)
+	}
 }

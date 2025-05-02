@@ -8,7 +8,9 @@ func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.RouterGroup) {
 	{
 		{{.EntityName}}.POST("", c.Create)
 		{{.EntityName}}.POST("bulk", c.BulkCreate)
-		{{.EntityName}}.GET("", c.GetAll)
+		{{.EntityName}}.GET("", func(ctx *gin.Context) {
+			c.GetAll(ctx)
+		})
 		{{.EntityName}}.GET("/:id", c.GetByID)
 		{{.EntityName}}.PUT("/:id", c.Update)
 		{{.EntityName}}.PUT("bulk", c.BulkUpdate)

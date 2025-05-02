@@ -10,6 +10,7 @@ import (
 	"{{.ModuleName}}/errs/errcodes"
 	"{{.ModuleName}}/dto"
 	"{{.ModuleName}}/repositories"
+	"gorm.io/gorm"
 )
 
 // {{.EntityName}}Controller handles HTTP requests for {{.EntityName}}
@@ -89,7 +90,7 @@ func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
 // @Failure 500 {object} dto.ErrorResponse "Server error"
 // @Router /{{snakeCase .EntityName}} [get]
 // @ID getAll{{.EntityName}}
-func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gorm.DB) *gorm.DB) {
 	var query dto.Full{{.EntityName}}Query
 	
 	if err := ctx.ShouldBindQuery(&query); err != nil {
@@ -97,7 +98,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context) {
 		return
 	}
 	
-	{{.EntityNameLower}}s, p, err := c.repository.GetAll(&query)
+	{{.EntityNameLower}}s, p, err := c.repository.GetAll(&query, scopes...)
 	if err != nil {
 		ctx.JSON(errs.GetStatusCode(err), err)
 		return

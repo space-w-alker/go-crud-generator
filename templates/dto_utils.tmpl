@@ -33,6 +33,7 @@ type RefreshTokenInput struct {
 }
 
 type PaginationQuery struct {
+	Q         *string `form:"q,omitempty" json:"q,omitempty"`
 	Page      *int    `form:"page,omitempty" json:"page,omitempty"`
 	Size      *int    `form:"size,omitempty" json:"size,omitempty"`
 	SortBy    *string `form:"sortBy,omitempty" json:"sortBy,omitempty"`

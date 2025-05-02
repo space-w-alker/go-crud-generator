@@ -17,23 +17,23 @@ import (
 
 // Input types matching your TypeScript interface
 type Field struct {
-	FieldName string      `json:"fieldName"`
-	FieldType string      `json:"fieldType"`
-	FilterBy  bool        `json:"filterBy,omitempty"`
-	Primary   bool        `json:"primary"`
-	Nullable  bool        `json:"nullable"`
-	Default   interface{} `json:"default"`
-	Unique    bool        `json:"unique"`
+	FieldName  string      `json:"fieldName"`
+	FieldType  string      `json:"fieldType"`
+	FilterBy   bool        `json:"filterBy,omitempty"`
+	Searchable bool        `json:"searchable,omitempty"`
+	Primary    bool        `json:"primary"`
+	Nullable   bool        `json:"nullable"`
+	Default    interface{} `json:"default"`
+	Unique     bool        `json:"unique"`
 }
 
 type Relation struct {
-	RelationType   string `json:"relationType"`
-	RelatedEntity  string `json:"relatedEntity"`
-	ForeignKey     string `json:"foreignKey"`
-	FieldName      string `json:"fieldName"`
-	Nullable       bool   `json:"nullable"`
-	Cascade        bool   `json:"cascade"`
-	DeleteBehavior string `json:"deleteBehavior"`
+	RelationType  string `json:"relationType"`
+	RelatedEntity string `json:"relatedEntity"`
+	ForeignKey    string `json:"foreignKey"`
+	FieldName     string `json:"fieldName"`
+	Nullable      bool   `json:"nullable"`
+	Cascade       bool   `json:"cascade"`
 }
 
 type CustomEndpoint struct {
@@ -225,10 +225,16 @@ var templateFuncs = template.FuncMap{
 			return foreignKeyField + "\n\t" + relationField
 
 		case "OneToMany":
-			return fmt.Sprintf("%s []%s `gorm:\"foreignKey:%sID\"`",
+			return fmt.Sprintf("%s []%s `gorm:\"foreignKey:%sID%s\"`",
 				toGoFieldName(relation.FieldName),
 				relation.RelatedEntity,
-				lo.CoalesceOrEmpty(lo.PascalCase(relation.ForeignKey), lo.PascalCase(entityName)))
+				lo.CoalesceOrEmpty(lo.PascalCase(relation.ForeignKey), lo.PascalCase(entityName)),
+				func() string {
+					if relation.Cascade {
+						return ";constraint:OnDelete:CASCADE,OnUpdate:CASCADE"
+					}
+					return ""
+				}())
 
 		case "ManyToMany":
 			foreignTable := fmt.Sprintf("%s_%s", strings.ToLower(entityName), strings.ToLower(relation.RelatedEntity))
