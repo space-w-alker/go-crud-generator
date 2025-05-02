@@ -13,6 +13,5 @@ func SetupControllersAndRoutes(r *gin.RouterGroup, db *gorm.DB) {
 	{{camelCase .EntityName}}Repo := repositories.New{{.EntityName}}Repository(db)
 	{{camelCase .EntityName}}Controller := controllers.New{{.EntityName}}Controller({{camelCase .EntityName}}Repo)
 	{{camelCase .EntityName}}Controller.RegisterRoutes(r)
-	{{camelCase .EntityName}}Controller.RegisterMainRoutes(r)
   {{- end}}
 }

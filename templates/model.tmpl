@@ -24,8 +24,17 @@ func ({{.EntityNameLower}} *{{.EntityName}}) TableName() string {
 	return "{{.GetTableName}}"
 }
 
-func ({{.EntityNameLower}} *{{.EntityName}}) BeforeCreate(_ *gorm.DB) (err error) {
-	id := uuid.New().String()
-  {{.EntityNameLower}}.{{toGoFieldName .GetPrimaryKeyName}} = &id
-  return
+func ({{camelCase .EntityName}} *{{.EntityName}}) BeforeCreate(_ *gorm.DB) (err error) {
+	idHasError := {{camelCase .EntityName}}.{{toGoFieldName .GetPrimaryKeyName}} == nil
+	if !idHasError {
+		if err := uuid.Validate(*{{camelCase .EntityName}}.{{toGoFieldName .GetPrimaryKeyName}}); err != nil {
+			idHasError = true
+		}
+	}
+	if idHasError {
+		id := uuid.New().String()
+		{{camelCase .EntityName}}.{{toGoFieldName .GetPrimaryKeyName}} = &id
+	}
+	return
 }
+

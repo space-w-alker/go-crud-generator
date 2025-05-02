@@ -2,4 +2,21 @@ package controllers
 
 import "github.com/gin-gonic/gin"
 
-func (c *{{.EntityName}}Controller) RegisterMainRoutes(_ *gin.RouterGroup) {}
+// RegisterRoutes sets up the routing for the {{.EntityName}} controller
+func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.RouterGroup) {
+	{{.EntityName}} := router.Group("/{{snakeCase .EntityName}}")
+	{
+		{{.EntityName}}.POST("", c.Create)
+		{{.EntityName}}.POST("bulk", c.BulkCreate)
+		{{.EntityName}}.GET("", c.GetAll)
+		{{.EntityName}}.GET("/:id", c.GetByID)
+		{{.EntityName}}.PUT("/:id", c.Update)
+		{{.EntityName}}.PUT("bulk", c.BulkUpdate)
+		{{.EntityName}}.DELETE("/:id", c.Delete)
+		
+		// Custom endpoints
+		{{- range .CustomEndpoints}}
+		{{.EntityName}}.{{.HTTPMethod}}("{{.Path}}", c.{{.EndpointName}})
+		{{- end}}
+	}
+}

@@ -1,7 +1,9 @@
 package {{.PackageName}}
 
 import (
+	"crypto/tls"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -17,6 +19,9 @@ type Config struct {
 	Port            string
 	Mode            string
 	ShutdownTimeout time.Duration
+	TLSCertFile     string // Path to TLS certificate file
+	TLSKeyFile      string // Path to TLS key file
+	EnableTLS       bool   // Whether to enable TLS
 }
 
 // NewServer creates a new Gin server with default middleware
@@ -44,8 +49,24 @@ func NewServer(config Config) *gin.Engine {
 	return r
 }
 
-// StartServer starts the HTTP server
-func StartServer(r *gin.Engine, port string) error {
-	log.Printf("Server starting on port %s", port)
-	return r.Run(":" + port)
+// StartServer starts the HTTP or HTTPS server based on configuration
+func StartServer(r *gin.Engine, config Config) error {
+	server := &http.Server{
+		Addr:        ":" + config.Port,
+		Handler:     r,
+		ReadTimeout: time.Second,
+	}
+
+	if config.EnableTLS {
+		// Configure TLS
+		server.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12, // Enforce minimum TLS version
+		}
+
+		log.Printf("Server starting with TLS on port %s", config.Port)
+		return server.ListenAndServeTLS(config.TLSCertFile, config.TLSKeyFile)
+	}
+
+	log.Printf("Server starting without TLS on port %s", config.Port)
+	return server.ListenAndServe()
 }

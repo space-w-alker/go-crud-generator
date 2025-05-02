@@ -91,7 +91,6 @@ func (s *AuthService) SignUp(input dto.SignUpInput) (*dto.AuthResponse, error) {
 		Address:            input.Address,
 		State:              input.State,
 		City:               input.City,
-		DateCreated:        &now,
 		IsVerified:         &isVerified,
 		VerificationStatus: &verificationStatus,
 		IsActive:           &isActive,

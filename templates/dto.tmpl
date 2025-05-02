@@ -7,15 +7,17 @@ import (
 // {{.EntityName}}Create DTO for creating a new {{.EntityName}}
 type {{.EntityName}}Create struct {
 	{{- range .Fields}}
-	{{- if not .Primary}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
-	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
+}
+
+type {{.EntityName}}BulkCreate struct {
+  {{.EntityName}}s []*{{.EntityName}}Create `json:"{{camelCase .EntityNamePlural}}" binding:"required,min=1"`
 }
 
 // {{.EntityName}}Update DTO for updating an existing {{.EntityName}}
@@ -30,6 +32,15 @@ type {{.EntityName}}Update struct {
 	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
 	{{- end}}
+}
+
+type {{.EntityName}}UpdateWithID struct {
+	IDField
+	{{.EntityName}}Update
+}
+
+type {{.EntityName}}BulkUpdate struct {
+  {{.EntityName}}s []*{{.EntityName}}UpdateWithID `json:"{{camelCase .EntityNamePlural}}" binding:"required,min=1"`
 }
 
 // {{.EntityName}}Response DTO for responding with {{.EntityName}} data

@@ -311,7 +311,7 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/space-w-alker/bus-drop-ng/internal/bus-drop-ng/server"
+	moduleName := "github.com/space-w-alker/campus-nexus/internal/server"
 
 	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
 		fmt.Printf("Error generating generic code: %v", err)
@@ -379,34 +379,34 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 		PackageName string
 		ModuleName  string
 	}{Entities: data, PackageName: packageName, ModuleName: moduleName}
-	if err := generateFileFromTemplate(path.Join(outputDir, "dto", "utils.go"), path.Join("templates", "dto_utils.tmpl"), struct{}{}); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "dto", "utils.go"), path.Join("templates", "dto_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), struct{}{}); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "routes.go"), path.Join("templates", "routes.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "routes.go"), path.Join("templates", "routes.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "auth_service.go"), path.Join("templates", "auth_service.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "auth_service.go"), path.Join("templates", "auth_service.tmpl"), d, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "controllers", "auth_controller.go"), path.Join("templates", "auth_controller.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "controllers", "auth_controller.go"), path.Join("templates", "auth_controller.tmpl"), d, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "errs", "errs.go"), path.Join("templates", "errs.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs", "errs.go"), path.Join("templates", "errs.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "middleware.go"), path.Join("templates", "middleware.tmpl"), d); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "auth_middleware.go"), path.Join("templates", "middleware.tmpl"), d, false); err != nil {
 		return err
 	}
 	return nil
@@ -439,7 +439,7 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 
 	// Generate each file from its template
 	for filePath, templateContent := range templates {
-		if err := generateFileFromTemplate(filePath, templateContent, templateData); err != nil {
+		if err := generateFileFromTemplate(filePath, templateContent, templateData, false); err != nil {
 			return fmt.Errorf("error generating file %s: %v", filePath, err)
 		}
 	}
@@ -453,8 +453,13 @@ func fileExists(filename string) bool {
 }
 
 // generateFileFromTemplate creates a file from a template with the given data
-func generateFileFromTemplate(filePath, templatePath string, data interface{}) error {
+func generateFileFromTemplate(filePath, templatePath string, data interface{}, skipExists bool) error {
 	// Read the template file
+
+	if skipExists && fileExists(filePath) {
+		return nil
+	}
+
 	templateContent, err := os.ReadFile(templatePath)
 	if err != nil {
 		return fmt.Errorf("error reading template file %s: %v", templatePath, err)

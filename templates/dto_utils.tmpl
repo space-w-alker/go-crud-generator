@@ -2,6 +2,10 @@ package dto
 
 import "time"
 
+type IDField struct {
+	ID *string `json:"ID,omitempty" binding:""`
+}
+
 type SignUpInput struct {
 	Email       *string `json:"email" binding:"required_without=PhoneNumber,omitempty,email"`
 	PhoneNumber *string `json:"phoneNumber" binding:"required_without=Email,omitempty"`

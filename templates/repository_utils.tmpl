@@ -14,16 +14,16 @@ const (
 
 // Pagination holds pagination data
 type Pagination struct {
-	Limit      int    `json:"limit,omitempty"`
-	Page       int    `json:"page,omitempty"`
-	Sort       string `json:"sort,omitempty"`
-	SortOrder  string `json:"sort_order,omitempty"`
-	TotalRows  int    `json:"total_rows"`
-	TotalPages int    `json:"total_pages"`
+	Limit      *int    `json:"limit,omitempty"`
+	Page       *int    `json:"page,omitempty"`
+	Sort       *string `json:"sort,omitempty"`
+	SortOrder  *string `json:"sort_order,omitempty"`
+	TotalRows  *int    `json:"total_rows"`
+	TotalPages *int    `json:"total_pages"`
 }
 
 // New creates a new Pagination instance
-func NewPagination(page int, size int, sort string, sortOrder string) *Pagination {
+func NewPagination(page *int, size *int, sort *string, sortOrder *string) *Pagination {
 	return &Pagination{
 		Limit:     size,
 		Page:      page,
@@ -36,10 +36,16 @@ func NewPagination(page int, size int, sort string, sortOrder string) *Paginatio
 func (p *Pagination) Paginate() func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		// Apply sorting if specified
-		if p.Sort != "" {
-			isDesc := p.SortOrder == "desc"
-			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: p.Sort}, Desc: isDesc})
+		if p.Sort == nil {
+			defaultSort := "created_at"
+			p.Sort = &defaultSort
 		}
+		if p.SortOrder == nil {
+			defaultOrder := "desc"
+			p.SortOrder = &defaultOrder
+		}
+		isDesc := *p.SortOrder == "desc"
+		db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: *p.Sort}, Desc: isDesc})
 
 		// Apply pagination
 		return db.Offset(p.GetOffset()).Limit(p.GetLimit())
@@ -53,8 +59,10 @@ func (p *Pagination) Count(db *gorm.DB, model interface{}) error {
 		return err
 	}
 
-	p.TotalRows = int(totalRows)
-	p.TotalPages = int(math.Ceil(float64(totalRows) / float64(p.GetLimit())))
+	totalInt := int(totalRows)
+	totalPages := int(math.Ceil(float64(totalRows) / float64(p.GetLimit())))
+	p.TotalRows = &totalInt
+	p.TotalPages = &totalPages
 	return nil
 }
 
@@ -65,16 +73,18 @@ func (p *Pagination) GetOffset() int {
 
 // GetLimit returns the limit
 func (p *Pagination) GetLimit() int {
-	if p.Limit == 0 {
-		p.Limit = DefaultPageSize // default limit
+	if p.Limit == nil {
+		d := DefaultPageSize
+		p.Limit = &d // default limit
 	}
-	return p.Limit
+	return *p.Limit
 }
 
 // GetPage returns the current page
 func (p *Pagination) GetPage() int {
-	if p.Page == 0 {
-		p.Page = DefaultPage // default page
+	if p.Page == nil {
+		d := DefaultPage
+		p.Page = &d // default page
 	}
-	return p.Page
+	return *p.Page
 }
