@@ -233,7 +233,7 @@ var templateFuncs = template.FuncMap{
 					if relation.Cascade {
 						return ";constraint:OnDelete:CASCADE,OnUpdate:CASCADE"
 					}
-					return ""
+					return ";constraint:OnDelete:SET NULL,OnUpdate:SET NULL"
 				}())
 
 		case "ManyToMany":

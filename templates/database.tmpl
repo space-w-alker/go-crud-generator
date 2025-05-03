@@ -78,6 +78,8 @@ func NewSQLiteDB(config SQLiteConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping SQLite database: %w", err)
 	}
 
+	db.Exec("PRAGMA foreign_keys = ON")
+
 	if err := AutoMigrate(db); err != nil {
 		return nil, fmt.Errorf("Migration Failed: %w", err)
 	}

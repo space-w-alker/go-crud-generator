@@ -48,11 +48,13 @@ function convertToTargetFormat(inputJson) {
           relatedEntity: rel.to,
           fieldName: pascalToCamel(rel.name),
           nullable: false, // Default value, could be adjusted based on your rules
-          cascade: true, // Default value
         };
         if (rel.type === "one-to-many") {
           const arr = rel.toField.split("_");
           relation.foreignKey = pascalToCamel(`${arr.slice(0, -1).join("_")}`);
+        }
+        if (rel.cascade) {
+          relation.cascade = true;
         }
 
         relations.push(relation);
