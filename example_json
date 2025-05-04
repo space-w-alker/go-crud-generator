@@ -1,0 +1,663 @@
+{
+  "entities": {
+    "User": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "unique_code": {
+          "type": "string",
+          "searchable": true,
+          "unique": true,
+          "nullable": true
+        },
+        "email": {
+          "type": "string",
+          "searchable": true,
+          "unique": true,
+          "nullable": true,
+          "description": "User's email address"
+        },
+        "is_owner": {
+          "type": "boolean",
+          "nullable": true,
+          "description": "User's email address"
+        },
+        "phone_number": {
+          "type": "string",
+          "searchable": true,
+          "unique": true,
+          "nullable": true,
+          "description": "Contact number"
+        },
+        "password_hash": {
+          "type": "string",
+          "description": "Securely stored password"
+        },
+        "full_name": {
+          "type": "string",
+          "searchable": true,
+          "description": "User's complete name"
+        },
+        "profile_imageURL": {
+          "type": "string",
+          "nullable": true,
+          "description": "Optional profile picture"
+        },
+        "address": {
+          "type": "string",
+          "nullable": true,
+          "description": "Physical address"
+        },
+        "state": {
+          "type": "string",
+          "nullable": true,
+          "description": "User's state"
+        },
+        "city": {
+          "type": "string",
+          "nullable": true,
+          "description": "User's city"
+        },
+        "is_verified": {
+          "type": "boolean",
+          "description": "Boolean"
+        },
+        "verification_status": {
+          "type": "enum",
+          "values": ["unverified", "pending", "verified"],
+          "description": "Verification status"
+        },
+        "is_active": {
+          "type": "boolean",
+          "description": "Boolean"
+        }
+      }
+    },
+    "UserType": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "searchable": true,
+          "description": "User's email address"
+        },
+        "type": {
+          "type": "string",
+          "description": "User's email address"
+        }
+      }
+    },
+    "Institution": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "short_code": {
+          "type": "string",
+          "unique": true,
+          "searchable": true,
+          "nullable": true,
+          "description": "User's email address"
+        },
+        "name": {
+          "type": "string",
+          "searchable": true,
+          "description": "User's email address"
+        },
+        "logoURL": {
+          "type": "string",
+          "nullable": true,
+          "description": "Contact number"
+        }
+      }
+    },
+    "Session": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "start_year": {
+          "type": "string",
+          "unique": false
+        },
+        "end_year": {
+          "type": "string",
+          "unique": false
+        }
+      }
+    },
+    "Term": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "start_date": {
+          "type": "string",
+          "unique": false
+        },
+        "end_date": {
+          "type": "string",
+          "unique": false
+        }
+      }
+    },
+    "Event": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "searchable": true,
+          "unique": false
+        },
+        "start_date_time": {
+          "type": "date",
+          "unique": false
+        },
+        "end_date_time": {
+          "type": "date",
+          "unique": false
+        }
+      }
+    },
+    "Period": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "start_date_time": {
+          "type": "date",
+          "unique": false
+        },
+        "end_date_time": {
+          "type": "date",
+          "unique": false
+        }
+      }
+    },
+    "Class": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "searchable": true,
+          "unique": false
+        }
+      }
+    },
+    "Subject": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "searchable": true,
+          "unique": false
+        }
+      }
+    },
+    "Rubric": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "unique": false
+        },
+        "max_score": {
+          "type": "number",
+          "unique": false
+        }
+      }
+    },
+    "Grade": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "name": {
+          "type": "string",
+          "unique": false
+        },
+        "max": {
+          "type": "number",
+          "unique": false
+        },
+        "min": {
+          "type": "number",
+          "unique": false
+        },
+        "remark": {
+          "type": "string",
+          "unique": false
+        }
+      }
+    },
+    "TermResult": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        }
+      }
+    },
+    "RubricSubjectResult": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "score": {
+          "type": "number",
+          "unique": false
+        }
+      }
+    },
+    "Attendance": {
+      "fields": {
+        "ID": {
+          "type": "uuid",
+          "primaryKey": true,
+          "description": "Unique identifier"
+        },
+        "type": {
+          "type": "string",
+          "unique": false
+        }
+      }
+    }
+  },
+  "relationships": [
+    {
+      "name": "userType",
+      "type": "many-to-one",
+      "from": "User",
+      "to": "UserType",
+      "fromField": "user_type_id",
+      "toField": "ID"
+    },
+    {
+      "name": "users",
+      "type": "one-to-many",
+      "from": "UserType",
+      "to": "User",
+      "fromField": "ID",
+      "toField": "user_type_id"
+    },
+    {
+      "name": "owner",
+      "type": "many-to-one",
+      "from": "Institution",
+      "to": "User",
+      "fromField": "owner_id",
+      "toField": "ID"
+    },
+    {
+      "name": "ownedInstitutions",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "User",
+      "to": "Institution",
+      "fromField": "ID",
+      "toField": "owner_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "User",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "members",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "User",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "activeInstitution",
+      "type": "many-to-one",
+      "from": "User",
+      "to": "Institution",
+      "fromField": "active_institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "UserType",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "userTypes",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "UserType",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "Session",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "sessions",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "Session",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "session",
+      "type": "many-to-one",
+      "from": "Term",
+      "to": "Session",
+      "fromField": "session_id",
+      "toField": "ID"
+    },
+    {
+      "name": "terms",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Session",
+      "to": "Term",
+      "fromField": "ID",
+      "toField": "session_id"
+    },
+    {
+      "name": "term",
+      "type": "many-to-one",
+      "from": "Period",
+      "to": "Term",
+      "fromField": "term_id",
+      "toField": "ID"
+    },
+    {
+      "name": "periods",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Term",
+      "to": "Period",
+      "fromField": "ID",
+      "toField": "term_id"
+    },
+    {
+      "name": "class",
+      "type": "many-to-one",
+      "from": "Period",
+      "to": "Class",
+      "fromField": "class_id",
+      "toField": "ID"
+    },
+    {
+      "name": "periods",
+      "type": "one-to-many",
+      "from": "Class",
+      "to": "Period",
+      "fromField": "ID",
+      "toField": "class_id"
+    },
+    {
+      "name": "teacher",
+      "type": "many-to-one",
+      "from": "Period",
+      "to": "User",
+      "fromField": "teacher_id",
+      "toField": "ID"
+    },
+    {
+      "name": "teacherPeriods",
+      "type": "one-to-many",
+      "from": "User",
+      "to": "Period",
+      "fromField": "ID",
+      "toField": "teacher_id"
+    },
+    {
+      "name": "subject",
+      "type": "many-to-one",
+      "from": "Period",
+      "to": "Subject",
+      "fromField": "subject_id",
+      "toField": "ID"
+    },
+    {
+      "name": "periods",
+      "type": "one-to-many",
+      "from": "Subject",
+      "to": "Period",
+      "fromField": "ID",
+      "toField": "subject_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "Class",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "classes",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "Class",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "Subject",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "subjects",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "Subject",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "Rubric",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "rubrics",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "Rubric",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "institution",
+      "type": "many-to-one",
+      "from": "Grade",
+      "to": "Institution",
+      "fromField": "institution_id",
+      "toField": "ID"
+    },
+    {
+      "name": "grades",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Institution",
+      "to": "Grade",
+      "fromField": "ID",
+      "toField": "institution_id"
+    },
+    {
+      "name": "student",
+      "type": "many-to-one",
+      "from": "TermResult",
+      "to": "User",
+      "fromField": "student_id",
+      "toField": "ID"
+    },
+    {
+      "name": "termResults",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "User",
+      "to": "TermResult",
+      "fromField": "ID",
+      "toField": "student_id"
+    },
+    {
+      "name": "term",
+      "type": "many-to-one",
+      "from": "TermResult",
+      "to": "Term",
+      "fromField": "term_id",
+      "toField": "ID"
+    },
+    {
+      "name": "termResults",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Term",
+      "to": "TermResult",
+      "fromField": "ID",
+      "toField": "term_id"
+    },
+    {
+      "name": "termResult",
+      "type": "many-to-one",
+      "from": "RubricSubjectResult",
+      "to": "TermResult",
+      "fromField": "term_result_id",
+      "toField": "ID"
+    },
+    {
+      "name": "results",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "TermResult",
+      "to": "RubricSubjectResult",
+      "fromField": "ID",
+      "toField": "term_result_id"
+    },
+    {
+      "name": "subject",
+      "type": "many-to-one",
+      "from": "RubricSubjectResult",
+      "to": "Subject",
+      "fromField": "subject_id",
+      "toField": "ID"
+    },
+    {
+      "name": "results",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Subject",
+      "to": "RubricSubjectResult",
+      "fromField": "ID",
+      "toField": "subject_id"
+    },
+    {
+      "name": "rubric",
+      "type": "many-to-one",
+      "from": "RubricSubjectResult",
+      "to": "Rubric",
+      "fromField": "rubric_id",
+      "toField": "ID"
+    },
+    {
+      "name": "results",
+      "type": "one-to-many",
+      "cascade": true,
+      "from": "Rubric",
+      "to": "RubricSubjectResult",
+      "fromField": "ID",
+      "toField": "rubric_id"
+    },
+    {
+      "name": "period",
+      "type": "many-to-one",
+      "from": "Attendance",
+      "to": "Period",
+      "fromField": "period_id",
+      "toField": "ID"
+    },
+    {
+      "name": "attendees",
+      "type": "one-to-many",
+      "from": "Period",
+      "to": "Attendance",
+      "fromField": "ID",
+      "toField": "period_id"
+    },
+    {
+      "name": "event",
+      "type": "many-to-one",
+      "from": "Attendance",
+      "to": "Event",
+      "fromField": "event_id",
+      "toField": "ID"
+    },
+    {
+      "name": "attendees",
+      "type": "one-to-many",
+      "from": "Event",
+      "to": "Attendance",
+      "fromField": "ID",
+      "toField": "event_id"
+    }
+  ]
+}
