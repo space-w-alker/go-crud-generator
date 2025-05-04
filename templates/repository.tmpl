@@ -3,6 +3,7 @@ package repositories
 
 import (
 	"errors"
+	"github.com/samber/lo"
 	"{{.ModuleName}}/errs"
 	"{{.ModuleName}}/errs/errcodes"
 	"{{.ModuleName}}/models"
@@ -70,6 +71,17 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
 	query.Scopes(scopes...)
 
 	query.Where(&(q.{{.EntityName}}Query))
+
+	if q.StartDate != nil {
+		query = query.Where("created_at >= ?", q.StartDate)
+	}
+	if q.EndDate != nil {
+		query = query.Where("created_at <= ?", q.EndDate)
+	}
+
+	for _, preload := range q.Preload {
+		query.Preload(lo.PascalCase(preload))
+	}
 
 	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
 

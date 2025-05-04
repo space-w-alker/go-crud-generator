@@ -56,6 +56,9 @@ function convertToTargetFormat(inputJson) {
         if (rel.cascade) {
           relation.cascade = true;
         }
+        if (rel.foreignKey) {
+          relation.foreignKey = rel.foreignKey;
+        }
 
         relations.push(relation);
       }
@@ -91,6 +94,7 @@ function mapFieldType(type) {
     uuid: "string",
     string: "string",
     text: "string",
+    number: "number",
     integer: "number",
     decimal: "number",
     boolean: "boolean",

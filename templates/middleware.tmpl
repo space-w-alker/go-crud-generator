@@ -45,6 +45,8 @@ func AuthMiddleware(authService *repositories.AuthService) gin.HandlerFunc {
 			return
 		}
 
+		authService.DB.First(user)
+
 		// Check if user is active
 		if !*user.IsActive {
 			serverErr := errs.NewError(errcodes.CodeAccountDeactivated, "account is deactivated")

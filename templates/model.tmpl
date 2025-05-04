@@ -20,7 +20,7 @@ type {{.EntityName}} struct {
 }
 
 // TableName sets the table name for the {{.EntityName}} model
-func ({{.EntityNameLower}} *{{.EntityName}}) TableName() string {
+func ({{camelCase .EntityName}} *{{.EntityName}}) TableName() string {
 	return "{{.GetTableName}}"
 }
 
