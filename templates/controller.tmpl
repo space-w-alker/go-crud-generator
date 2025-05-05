@@ -33,8 +33,8 @@ func New{{.EntityName}}Controller(repository *repositories.{{.EntityName}}Reposi
 // @Produce json
 // @Param {{.EntityName}} body dto.{{.EntityName}}Create true "{{.EntityName}} object that needs to be created"
 // @Success 201 {object} dto.{{.EntityName}}Response
-// @Failure 400 {object} dto.ErrorResponse "Invalid input"
-// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Failure 400 {object} errs.ServerError "Invalid input"
+// @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}} [post]
 // @ID create{{.EntityName}}
 func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
@@ -63,7 +63,7 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 // @Produce json
 // @Param {{.EntityNamePlural}} body dto.{{.EntityName}}BulkCreate true "Array of {{.EntityName}} objects that need to be created"
 // @Success 207 {array} dto.{{.EntityName}}Response "Multi-status response (may contain both success and error responses)"
-// @Failure 400 {object} dto.ErrorResponse "Invalid input"
+// @Failure 400 {object} errs.ServerError "Invalid input"
 // @Router /{{snakeCase .EntityName}}/bulk [post]
 // @ID bulkCreate{{.EntityName}}
 func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
@@ -87,7 +87,7 @@ func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
 // @Produce json
 // @Param query query dto.Full{{.EntityName}}Query false "Query parameters"
 // @Success 200 {object} dto.Paginated{{.EntityName}}Response
-// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}} [get]
 // @ID getAll{{.EntityName}}
 func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gorm.DB) *gorm.DB) {
@@ -124,8 +124,8 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @Produce json
 // @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
 // @Success 200 {object} dto.{{.EntityName}}Response
-// @Failure 404 {object} dto.ErrorResponse "Not found"
-// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Failure 404 {object} errs.ServerError "Not found"
+// @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [get]
 // @ID get{{.EntityName}}ById
 func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
@@ -149,9 +149,9 @@ func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 // @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
 // @Param {{.EntityName}} body dto.{{.EntityName}}Update true "{{.EntityName}} object that needs to be updated"
 // @Success 200 {object} dto.{{.EntityName}}Response
-// @Failure 400 {object} dto.ErrorResponse "Invalid input"
-// @Failure 404 {object} dto.ErrorResponse "Not found"
-// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Failure 400 {object} errs.ServerError "Invalid input"
+// @Failure 404 {object} errs.ServerError "Not found"
+// @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [put]
 // @ID update{{.EntityName}}
 func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
@@ -181,7 +181,7 @@ func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 // @Produce json
 // @Param {{.EntityNamePlural}} body dto.{{.EntityName}}BulkUpdate true "Array of {{.EntityName}} objects that need to be updated"
 // @Success 207 {array} dto.{{.EntityName}}Response "Multi-status response (may contain both success and error responses)"
-// @Failure 400 {object} dto.ErrorResponse "Invalid input"
+// @Failure 400 {object} errs.ServerError "Invalid input"
 // @Router /{{snakeCase .EntityName}}/bulk [put]
 // @ID bulkUpdate{{.EntityName}}
 func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context) {
@@ -205,8 +205,8 @@ func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context) {
 // @Produce json
 // @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
 // @Success 204 "No Content"
-// @Failure 404 {object} dto.ErrorResponse "Not found"
-// @Failure 500 {object} dto.ErrorResponse "Server error"
+// @Failure 404 {object} errs.ServerError "Not found"
+// @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [delete]
 // @ID delete{{.EntityName}}
 func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {

@@ -9,7 +9,8 @@ import (
 
 // {{.EntityName}} represents the {{.EntityName}} entity
 type {{.EntityName}} struct {
-  gorm.Model
+  BaseModel
+
   {{$entityName := .EntityName}}
 	{{- range .Fields}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `{{formatGormTags . $.TableName}} {{formatValidationTags .}}`

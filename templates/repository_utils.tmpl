@@ -111,3 +111,42 @@ func ILikeAny(value string, columns ...string) func(db *gorm.DB) *gorm.DB {
 		return db.Where(strings.Join(conditions, " OR "), args...)
 	}
 }
+
+
+func FilterDate(filter dto.DateQuery) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if filter.StartDate != nil {
+			db = db.Where("created_at >= ?", filter.StartDate)
+		}
+		if filter.EndDate != nil {
+			db = db.Where("created_at <= ?", filter.EndDate)
+		}
+		return db
+	}
+}
+
+func PreloadRelations(p []string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		for _, preload := range p {
+			parts := strings.Split(preload, ";")
+
+			if len(parts) > 1 {
+				relationship := parts[0]
+				condition := parts[1]
+				args := parts[2:]
+
+				conditionArgs := make([]interface{}, len(args))
+				for i, arg := range args {
+					conditionArgs[i] = arg
+				}
+
+				db = db.Preload(lo.PascalCase(relationship), func(db *gorm.DB) *gorm.DB {
+					return db.Where(condition, conditionArgs...)
+				})
+			} else {
+				db = db.Preload(lo.PascalCase(preload))
+			}
+		}
+		return db
+	}
+}

@@ -310,6 +310,8 @@ func main() {
 
 	AssignRelations(entities)
 
+	fmt.Printf("%v\n\n", strings.Join(lo.Map(entities, func(item Entity, index int) string { return item.EntityName }), ","))
+
 	// Create base output directory
 	if err := createOutputDirectories(outputDir); err != nil {
 		fmt.Printf("Error creating output directories: %v\n", err)
@@ -391,6 +393,9 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
+	if err := generateFileFromTemplate(path.Join(outputDir, "models", "utils.go"), path.Join("templates", "model_utils.tmpl"), struct{}{}, true); err != nil {
+		return err
+	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "routes.go"), path.Join("templates", "routes.tmpl"), d, false); err != nil {
 		return err
 	}
@@ -412,7 +417,7 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "auth_middleware.go"), path.Join("templates", "middleware.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "auth_middleware.go"), path.Join("templates", "middleware.tmpl"), d, true); err != nil {
 		return err
 	}
 	return nil
@@ -528,4 +533,151 @@ func AssignRelations(entities []Entity) {
 			}
 		}
 	}
+}
+
+// TopologicalSortEntities sorts entities by their dependencies
+// Entities with no dependencies will be first in the returned slice
+// Entities with dependencies will follow their dependencies
+func TopologicalSortEntities(entities []Entity) ([]Entity, error) {
+	// Create a graph representation of dependencies
+	graph := make(map[string][]string)
+	// Track in-degree (number of dependencies) for each entity
+	inDegree := make(map[string]int)
+
+	// Initialize maps with all entity names
+	for _, entity := range entities {
+		graph[entity.EntityName] = []string{}
+		inDegree[entity.EntityName] = 0
+	}
+
+	// Build the dependency graph and in-degree counts
+	for _, entity := range entities {
+		for _, relation := range entity.Relations {
+			// Only consider ManyToOne relationships as dependencies
+			if relation.RelationType == "ManyToOne" {
+				// This entity depends on the related entity
+				graph[entity.EntityName] = append(graph[entity.EntityName], relation.RelatedEntity)
+				inDegree[relation.RelatedEntity]++
+			}
+		}
+	}
+
+	// Queue for entities with no dependencies (in-degree of 0)
+	var queue []string
+	for entityName, degree := range inDegree {
+		if degree == 0 {
+			queue = append(queue, entityName)
+		}
+	}
+
+	// Result will store the sorted entity names
+	var sortedNames []string
+
+	// Process queue
+	for len(queue) > 0 {
+		// Take first entity from queue
+		current := queue[0]
+		queue = queue[1:]
+
+		// Add to sorted result
+		sortedNames = append(sortedNames, current)
+
+		// For each entity that depends on the current entity
+		for _, dependent := range graph[current] {
+			// Reduce in-degree by 1
+			inDegree[dependent]--
+
+			// If in-degree becomes 0, add to queue
+			if inDegree[dependent] == 0 {
+				queue = append(queue, dependent)
+			}
+		}
+	}
+
+	// Check for cycles (if we couldn't process all entities)
+	if len(sortedNames) != len(entities) {
+		// Find and report specific cycles
+		cycles := findCycles(graph)
+		return nil, fmt.Errorf("cycle(s) detected in entity dependencies: %v", cycles)
+	}
+
+	// Create result slice in correct order
+	result := make([]Entity, len(entities))
+	entityMap := make(map[string]Entity)
+
+	// Create map for easy lookup
+	for _, entity := range entities {
+		entityMap[entity.EntityName] = entity
+	}
+
+	// Populate result slice in sorted order
+	for i, name := range sortedNames {
+		result[i] = entityMap[name]
+	}
+
+	return result, nil
+}
+
+// findCycles detects cycles in the dependency graph and returns them as strings
+func findCycles(graph map[string][]string) []string {
+	// Track visited nodes in current DFS path
+	visited := make(map[string]bool)
+	// Track nodes in the current recursion stack
+	inStack := make(map[string]bool)
+	// Store detected cycles
+	var cycles []string
+
+	// Temporary path for building cycle strings
+	var currentPath []string
+
+	// DFS function to detect cycles
+	var dfs func(node string) bool
+	dfs = func(node string) bool {
+		// Mark current node as visited and add to recursion stack
+		visited[node] = true
+		inStack[node] = true
+		currentPath = append(currentPath, node)
+
+		// Check all dependencies
+		for _, dependency := range graph[node] {
+			// If not visited, recurse
+			if !visited[dependency] {
+				if dfs(dependency) {
+					return true // Cycle found in subtree
+				}
+			} else if inStack[dependency] {
+				// If the dependency is in recursion stack, we found a cycle
+				// Find the start of the cycle in the current path
+				cycleStart := -1
+				for i, n := range currentPath {
+					if n == dependency {
+						cycleStart = i
+						break
+					}
+				}
+
+				// Build the cycle string
+				if cycleStart != -1 {
+					cyclePath := append([]string{}, currentPath[cycleStart:]...)
+					cyclePath = append(cyclePath, dependency) // Close the loop
+					cycles = append(cycles, strings.Join(cyclePath, " → "))
+				}
+				return true
+			}
+		}
+
+		// Remove the current node from recursion stack and path
+		inStack[node] = false
+		currentPath = currentPath[:len(currentPath)-1]
+		return false
+	}
+
+	// Check for cycles starting from each unvisited node
+	for node := range graph {
+		if !visited[node] {
+			dfs(node)
+		}
+	}
+
+	return cycles
 }

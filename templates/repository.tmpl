@@ -65,23 +65,12 @@ func (r *{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Cre
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
 func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
-  scopes = append(scopes, ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}))
+  scopes = append(scopes, FilterDate(q.DateQuery), ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}))
 
 	query := r.DB.Model(&models.{{.EntityName}}{})
 	query.Scopes(scopes...)
 
 	query.Where(&(q.{{.EntityName}}Query))
-
-	if q.StartDate != nil {
-		query = query.Where("created_at >= ?", q.StartDate)
-	}
-	if q.EndDate != nil {
-		query = query.Where("created_at <= ?", q.EndDate)
-	}
-
-	for _, preload := range q.Preload {
-		query.Preload(lo.PascalCase(preload))
-	}
 
 	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
 
@@ -89,7 +78,7 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
-	if err := query.Scopes(p.Paginate()).Find(&{{.EntityNameLower}}s).Error; err != nil {
+	if err := query.Scopes(p.Paginate(), PreloadRelations(q.Preload)).Find(&{{.EntityNameLower}}s).Error; err != nil {
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
@@ -116,6 +105,8 @@ func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dt
 	if err != nil {
 		return nil, err
 	}
+
+	r.DB.Exec("PRAGMA foreign_keys = ON")
 	
   if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
 		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
@@ -145,17 +136,11 @@ func (r *{{.EntityName}}Repository) BulkUpdate(updates []*dto.{{.EntityName}}Upd
 
 // Delete removes a {{.EntityName}} from the database
 func (r *{{.EntityName}}Repository) Delete(id {{.GetPrimaryKeyType}}) error {
-	{{- if .AdditionalFeatures.SoftDelete}}
-	// Soft delete
-	if err := r.DB.Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
-		return errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
-	}
-	{{- else}}
 	// Hard delete
+	r.DB.Exec("PRAGMA foreign_keys = ON")
 	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		return errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
-	{{- end}}
 	
 	return nil
 }
