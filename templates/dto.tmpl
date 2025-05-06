@@ -63,9 +63,13 @@ type Paginated{{.EntityName}}Response struct {
 // {{.EntityName}}Query DTO for querying {{.EntityName}} data
 type {{.EntityName}}Query struct {
   {{- range .Fields}}
-	{{- if .FilterBy}}
-	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
-	{{- end}}
+  {{- if and .FilterBy (ne .FieldType "date") }}
+  {{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
+  {{- end}}
+  {{- if and .FilterBy (eq .FieldType "date") }}
+    Start{{pascalCase .FieldName}} *time.Time `form:"start{{pascalCase .FieldName}},omitempty" json:"start{{pascalCase .FieldName}},omitempty"`
+    End{{pascalCase .FieldName}} *time.Time `form:"end{{pascalCase .FieldName}},omitempty" json:"end{{pascalCase .FieldName}},omitempty"`
+  {{- end}}
   {{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}

@@ -65,7 +65,14 @@ func (r *{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Cre
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
 func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
-  scopes = append(scopes, FilterDate(q.DateQuery), ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}))
+  scopes = append(
+    scopes,
+    FilterDate(q.DateQuery),
+    {{- range .Fields}}{{- if and .FilterBy (eq .FieldType "date")}}
+      FilterDate(dto.DateQuery{StartDate: q.Start{{pascalCase .FieldName}}, EndDate: q.Start{{pascalCase .FieldName}}}, "start_date_time"),
+    {{- end}}{{- end}}
+    ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
+  )
 
 	query := r.DB.Model(&models.{{.EntityName}}{})
 	query.Scopes(scopes...)

@@ -113,13 +113,17 @@ func ILikeAny(value string, columns ...string) func(db *gorm.DB) *gorm.DB {
 }
 
 
-func FilterDate(filter dto.DateQuery) func(db *gorm.DB) *gorm.DB {
+func FilterDate(filter dto.DateQuery, fieldName ...string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
+		f := "created_at"
+		if len(fieldName) == 1 {
+			f = fieldName[0]
+		}
 		if filter.StartDate != nil {
-			db = db.Where("created_at >= ?", filter.StartDate)
+			db = db.Where(fmt.Sprintf("%v >= ?", f), filter.StartDate)
 		}
 		if filter.EndDate != nil {
-			db = db.Where("created_at <= ?", filter.EndDate)
+			db = db.Where(fmt.Sprintf("%v <= ?", f), filter.EndDate)
 		}
 		return db
 	}
