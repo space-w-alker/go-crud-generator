@@ -69,7 +69,7 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
     scopes,
     FilterDate(q.DateQuery),
     {{- range .Fields}}{{- if and .FilterBy (eq .FieldType "date")}}
-      FilterDate(dto.DateQuery{StartDate: q.Start{{pascalCase .FieldName}}, EndDate: q.Start{{pascalCase .FieldName}}}, "start_date_time"),
+      FilterDate(dto.DateQuery{After: q.{{pascalCase .FieldName}}After, Before: q.{{pascalCase .FieldName}}Before}, "{{snakeCase .FieldName}}"),
     {{- end}}{{- end}}
     ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
   )

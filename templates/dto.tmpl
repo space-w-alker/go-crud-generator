@@ -67,8 +67,8 @@ type {{.EntityName}}Query struct {
   {{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
   {{- end}}
   {{- if and .FilterBy (eq .FieldType "date") }}
-    Start{{pascalCase .FieldName}} *time.Time `form:"start{{pascalCase .FieldName}},omitempty" json:"start{{pascalCase .FieldName}},omitempty"`
-    End{{pascalCase .FieldName}} *time.Time `form:"end{{pascalCase .FieldName}},omitempty" json:"end{{pascalCase .FieldName}},omitempty"`
+    {{pascalCase .FieldName}}After *time.Time `form:"{{camelCase .FieldName}}After,omitempty" json:"{{camelCase .FieldName}}After,omitempty"`
+    {{pascalCase .FieldName}}Before *time.Time `form:"{{camelCase .FieldName}}Before,omitempty" json:"{{camelCase .FieldName}}Before,omitempty"`
   {{- end}}
   {{- end}}
 	{{- range .Relations}}

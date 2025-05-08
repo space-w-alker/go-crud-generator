@@ -48,8 +48,8 @@ type PaginationResponse struct {
 }
 
 type DateQuery struct {
-	StartDate *time.Time `form:"startDate,omitempty" json:"startDate,omitempty"`
-	EndDate   *time.Time `form:"endDate,omitempty" json:"endDate,omitempty"`
+	After  *time.Time `form:"startDate,omitempty" json:"startDate,omitempty"`
+	Before *time.Time `form:"endDate,omitempty" json:"endDate,omitempty"`
 }
 
 type ErrorResponse struct {
