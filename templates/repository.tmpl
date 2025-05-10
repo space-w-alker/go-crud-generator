@@ -93,10 +93,14 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
 }
 
 // GetByID retrieves a single {{.EntityName}} by ID
-func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}) (*models.{{.EntityName}}, error) {
+func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.GetByIDQuery) (*models.{{.EntityName}}, error) {
 	var {{.EntityNameLower}} models.{{.EntityName}}
+	var options *dto.GetByIDQuery = &dto.GetByIDQuery{}
+	if (len(opt)) > 0 {
+		options = opt[0]
+	}
 	
-	if err := r.DB.First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+	if err := r.DB.Scopes(PreloadRelations(options.Preload)).First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
 		}
@@ -108,7 +112,7 @@ func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}) (*models.
 
 // Update updates an existing {{.EntityName}}
 func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
-	{{.EntityNameLower}}, err := r.GetByID(id)
+	{{.EntityNameLower}}, err := r.GetByID(id, &dto.GetByIDQuery{})
 	if err != nil {
 		return nil, err
 	}

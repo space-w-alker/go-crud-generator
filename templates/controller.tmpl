@@ -130,8 +130,14 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @ID get{{.EntityName}}ById
 func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
+	var query dto.GetByIDQuery
+
+	if err := ctx.ShouldBindQuery(&query); err != nil {
+		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
+		return
+	}
 	
-	{{.EntityName}}, err := c.repository.GetByID(id)
+	{{.EntityName}}, err := c.repository.GetByID(id, &query)
 	if err != nil {
 		ctx.JSON(errs.GetStatusCode(err), err)
 		return

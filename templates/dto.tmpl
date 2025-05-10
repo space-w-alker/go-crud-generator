@@ -49,9 +49,7 @@ type {{.EntityName}}Response struct {
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
 	{{- end}}
 	{{- range .Relations}}
-  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 	{{formatRelationDTO .}}
-	{{- end}}
 	{{- end}}
 }
 
