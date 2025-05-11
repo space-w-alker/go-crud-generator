@@ -12,8 +12,10 @@ type {{.EntityName}} struct {
   BaseModel
 
   {{$entityName := .EntityName}}
-	{{- range .Fields}}
+  {{- range .Fields}}
+	{{- if not .Virtual}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `{{formatGormTags . $.TableName}} {{formatValidationTags .}}`
+	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
 	{{formatRelation $entityName .}}

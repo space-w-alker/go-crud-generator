@@ -172,5 +172,6 @@ func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName
     {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
 		{{- end}}
 		{{- end}}
+		BaseModelResponse:   dto.BaseModelResponse{CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt},
 	}
 }

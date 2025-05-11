@@ -18,6 +18,7 @@ import (
 // Input types matching your TypeScript interface
 type Field struct {
 	FieldName  string      `json:"fieldName"`
+	Virtual    bool        `json:"virtual"`
 	FieldType  string      `json:"fieldType"`
 	FilterBy   bool        `json:"filterBy,omitempty"`
 	Searchable bool        `json:"searchable,omitempty"`
@@ -442,9 +443,15 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 		return fmt.Errorf("error generating file %s: %v", modelPath, err)
 	}
 
-	dtoPath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+"_base.go")
+	dtoBasePath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+"_base.go")
+	dtoBaseTempPath := filepath.Join("templates", "dto_base.tmpl")
+	if err := generateFileFromTemplate(dtoBasePath, dtoBaseTempPath, templateData, false); err != nil {
+		return fmt.Errorf("error generating file %s: %v", dtoBasePath, err)
+	}
+
+	dtoPath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+".go")
 	dtoTempPath := filepath.Join("templates", "dto.tmpl")
-	if err := generateFileFromTemplate(dtoPath, dtoTempPath, templateData, false); err != nil {
+	if err := generateFileFromTemplate(dtoPath, dtoTempPath, templateData, true); err != nil {
 		return fmt.Errorf("error generating file %s: %v", dtoPath, err)
 	}
 

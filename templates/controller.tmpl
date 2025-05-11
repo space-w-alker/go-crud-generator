@@ -123,6 +123,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @Accept json
 // @Produce json
 // @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
+// @Param query query dto.GetByIDQuery false "Query parameters"
 // @Success 200 {object} dto.{{.EntityName}}Response
 // @Failure 404 {object} errs.ServerError "Not found"
 // @Failure 500 {object} errs.ServerError "Server error"

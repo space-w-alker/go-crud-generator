@@ -56,6 +56,11 @@ type DateQuery struct {
 	Before *time.Time `form:"endDate,omitempty" json:"endDate,omitempty"`
 }
 
+type BaseModelResponse struct {
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type ErrorResponse struct {
 	Error *string `form:"error,omitempty" json:"error,omitempty"`
 }
