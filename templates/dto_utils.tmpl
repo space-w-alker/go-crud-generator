@@ -32,12 +32,7 @@ type RefreshTokenInput struct {
 	RefreshToken *string `json:"refreshToken" binding:"required"`
 }
 
-type GetByIDQuery struct {
-	Preload []string `form:"preload[],omitempty" json:"preload[],omitempty"`
-}
-
 type PaginationQuery struct {
-	Preload   []string `form:"preload[],omitempty" json:"preload[],omitempty"`
 	Q         *string  `form:"q,omitempty" json:"q,omitempty"`
 	Page      *int     `form:"page,omitempty" json:"page,omitempty"`
 	Size      *int     `form:"size,omitempty" json:"size,omitempty"`

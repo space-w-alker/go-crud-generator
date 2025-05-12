@@ -39,6 +39,9 @@ function convertToTargetFormat(inputJson) {
       if (fieldData.filterBy) {
         field.filterBy = true;
       }
+      if (fieldData.virtual) {
+        field.virtual = true;
+      }
 
       fields.push(field);
     }

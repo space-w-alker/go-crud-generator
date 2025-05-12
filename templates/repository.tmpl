@@ -27,7 +27,9 @@ func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*
 	{{$parent := .}}
 	// Map DTO to model
 	{{- range .Fields}}
+	{{- if not .Virtual}}
 	{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}} = create.{{toGoFieldName .FieldName}}
+	{{- end}}
 	{{- end}}
 
   {{- range .Relations}}
@@ -93,9 +95,9 @@ func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scop
 }
 
 // GetByID retrieves a single {{.EntityName}} by ID
-func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.GetByIDQuery) (*models.{{.EntityName}}, error) {
+func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.SessionClassQueryExtraOptions) (*models.{{.EntityName}}, error) {
 	var {{.EntityNameLower}} models.{{.EntityName}}
-	var options *dto.GetByIDQuery = &dto.GetByIDQuery{}
+	var options *dto.SessionClassQueryExtraOptions = &dto.SessionClassQueryExtraOptions{}
 	if (len(opt)) > 0 {
 		options = opt[0]
 	}
@@ -112,7 +114,7 @@ func (r *{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}, opt ...*d
 
 // Update updates an existing {{.EntityName}}
 func (r *{{.EntityName}}Repository) Update(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
-	{{.EntityNameLower}}, err := r.GetByID(id, &dto.GetByIDQuery{})
+	{{.EntityNameLower}}, err := r.GetByID(id, &dto.SessionClassQueryExtraOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -164,12 +166,19 @@ func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName
 	}
 	return &dto.{{.EntityName}}Response{
 		{{- range .Fields}}
+		{{- if not .Virtual}}
 		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
+		{{- end}}
 		{{- end}}
 		{{- range .Relations}}
     {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
     {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
+		{{- end}}
+    {{- if eq .RelationType "ManyToMany" }}
+    {{toGoFieldName .FieldName}}: lo.Map(model.{{toGoFieldName .FieldName}}, func(item models.{{.RelatedEntity}}, _ int) dto.{{.RelatedEntity}}Response {
+			return *To{{.RelatedEntity}}Response(&item)
+		}),
 		{{- end}}
 		{{- end}}
 		BaseModelResponse:   dto.BaseModelResponse{CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt},

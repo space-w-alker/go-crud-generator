@@ -1,4 +1,5 @@
 package dto
 
 type {{.EntityName}}QueryExtraOptions struct {
+	Preload      []string `form:"preload[],omitempty" json:"preload[],omitempty"`
 }
