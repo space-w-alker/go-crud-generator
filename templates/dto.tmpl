@@ -1,5 +1,21 @@
 package dto
 
+// {{.EntityName}}Create DTO for creating a new {{.EntityName}}
+type {{.EntityName}}Create struct {
+  Base{{.EntityName}}Create
+}
+
+// {{.EntityName}}Update DTO for updating an existing {{.EntityName}}
+type {{.EntityName}}Update struct {
+  Base{{.EntityName}}Update
+}
+
+// {{.EntityName}}Response DTO for responding with {{.EntityName}} data
+type {{.EntityName}}Response struct {
+  Base{{.EntityName}}Response
+}
+
 type {{.EntityName}}QueryExtraOptions struct {
 	Preload      []string `form:"preload[],omitempty" json:"preload[],omitempty"`
 }
+

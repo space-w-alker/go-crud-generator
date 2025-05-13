@@ -443,10 +443,10 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 		return fmt.Errorf("error generating file %s: %v", modelPath, err)
 	}
 
-	dtoBasePath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+"_base.go")
-	dtoBaseTempPath := filepath.Join("templates", "dto_base.tmpl")
-	if err := generateFileFromTemplate(dtoBasePath, dtoBaseTempPath, templateData, false); err != nil {
-		return fmt.Errorf("error generating file %s: %v", dtoBasePath, err)
+	baseDtoPath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+"_base.go")
+	baseDtoTempPath := filepath.Join("templates", "dto_base.tmpl")
+	if err := generateFileFromTemplate(baseDtoPath, baseDtoTempPath, templateData, false); err != nil {
+		return fmt.Errorf("error generating file %s: %v", baseDtoPath, err)
 	}
 
 	dtoPath := filepath.Join(outputDir, "dto", lo.SnakeCase(entity.EntityName)+".go")
@@ -455,11 +455,18 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 		return fmt.Errorf("error generating file %s: %v", dtoPath, err)
 	}
 
-	repositoriesPath := filepath.Join(outputDir, "repositories", lo.SnakeCase(entity.EntityName)+"_base.go")
-	repositoriesTempPath := filepath.Join("templates", "repository.tmpl")
-	if err := generateFileFromTemplate(repositoriesPath, repositoriesTempPath, templateData, false); err != nil {
-		return fmt.Errorf("error generating file %s: %v", repositoriesPath, err)
+	baseRepositoryPath := filepath.Join(outputDir, "repositories", lo.SnakeCase(entity.EntityName)+"_base.go")
+	baseRepositoryTempPath := filepath.Join("templates", "repository_base.tmpl")
+	if err := generateFileFromTemplate(baseRepositoryPath, baseRepositoryTempPath, templateData, false); err != nil {
+		return fmt.Errorf("error generating file %s: %v", baseRepositoryPath, err)
 	}
+
+	repositoryPath := filepath.Join(outputDir, "repositories", lo.SnakeCase(entity.EntityName)+".go")
+	repositoryTempPath := filepath.Join("templates", "repository.tmpl")
+	if err := generateFileFromTemplate(repositoryPath, repositoryTempPath, templateData, true); err != nil {
+		return fmt.Errorf("error generating file %s: %v", repositoryPath, err)
+	}
+
 	controllersPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go")
 	controllersTempPath := filepath.Join("templates", "controller.tmpl")
 	if err := generateFileFromTemplate(controllersPath, controllersTempPath, templateData, true); err != nil {

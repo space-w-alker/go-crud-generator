@@ -1,0 +1,188 @@
+//nolint:dupl // Disable dupl linter for this entire file
+package repositories
+
+import (
+	"errors"
+	"github.com/samber/lo"
+	"{{.ModuleName}}/errs"
+	"{{.ModuleName}}/errs/errcodes"
+	"{{.ModuleName}}/models"
+	"{{.ModuleName}}/dto"
+	"gorm.io/gorm"
+)
+
+// {{.EntityName}}Repository handles database operations for {{.EntityName}}
+type {{.EntityName}}Repository struct {
+	DB *gorm.DB
+}
+
+// New{{.EntityName}}Repository creates a new repository
+func New{{.EntityName}}Repository(db *gorm.DB) *{{.EntityName}}Repository {
+	return &{{.EntityName}}Repository{DB: db}
+}
+
+// Create adds a new {{.EntityName}} to the database
+func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
+	{{.EntityNameLower}} := &models.{{.EntityName}}{}
+	{{$parent := .}}
+	// Map DTO to model
+	{{- range .Fields}}
+	{{- if not .Virtual}}
+	{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}} = create.{{toGoFieldName .FieldName}}
+	{{- end}}
+	{{- end}}
+
+  {{- range .Relations}}
+  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+  if create.{{toGoFieldName .FieldName}}ID != nil {
+	  {{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
+  }
+  {{- end}}
+  {{- end}}
+	
+	// Save to database
+	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
+    return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+	
+	return {{.EntityNameLower}}, nil
+}
+
+
+func (r *{{.EntityName}}Repository) BaseBulkCreate(creates []*dto.{{.EntityName}}Create) []any {
+	results := make([]any, len(creates))
+
+	for i, create := range creates {
+		{{.EntityNameLower}}, err := r.Create(create)
+		if err != nil {
+			results[i] = err
+		} else {
+			results[i] = {{.EntityNameLower}}
+		}
+	}
+
+	return results
+}
+
+// GetAll retrieves all {{.EntityNamePlural}} with optional filtering
+func (r *{{.EntityName}}Repository) BaseGetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
+	var {{.EntityNameLower}}s []models.{{.EntityName}}
+  scopes = append(
+    scopes,
+    FilterDate(q.DateQuery),
+    {{- range .Fields}}{{- if and .FilterBy (eq .FieldType "date")}}
+      FilterDate(dto.DateQuery{After: q.{{pascalCase .FieldName}}After, Before: q.{{pascalCase .FieldName}}Before}, "{{snakeCase .FieldName}}"),
+    {{- end}}{{- end}}
+    ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
+  )
+
+	query := r.DB.Model(&models.{{.EntityName}}{})
+	query.Scopes(scopes...)
+
+	query.Where(&(q.{{.EntityName}}Query))
+
+	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
+
+	if err := p.Count(query, &models.{{.EntityName}}{}); err != nil {
+    return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	if err := query.Scopes(p.Paginate(), PreloadRelations(q.Preload)).Find(&{{.EntityNameLower}}s).Error; err != nil {
+    return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	return {{.EntityNameLower}}s, p, nil
+}
+
+// GetByID retrieves a single {{.EntityName}} by ID
+func (r *{{.EntityName}}Repository) BaseGetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.{{.EntityName}}QueryExtraOptions) (*models.{{.EntityName}}, error) {
+	var {{.EntityNameLower}} models.{{.EntityName}}
+	var options *dto.{{.EntityName}}QueryExtraOptions = &dto.{{.EntityName}}QueryExtraOptions{}
+	if (len(opt)) > 0 {
+		options = opt[0]
+	}
+	
+	if err := r.DB.Scopes(PreloadRelations(options.Preload)).First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
+		}
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+	
+	return &{{.EntityNameLower}}, nil
+}
+
+// Update updates an existing {{.EntityName}}
+func (r *{{.EntityName}}Repository) BaseUpdate(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
+	{{.EntityNameLower}}, err := r.GetByID(id, &dto.{{.EntityName}}QueryExtraOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	r.DB.Exec("PRAGMA foreign_keys = ON")
+	
+  if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	// Save changes
+  return {{.EntityNameLower}}, nil
+}
+
+
+func (r *{{.EntityName}}Repository) BaseBulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
+	results := make([]any, len(updates))
+
+	for i, update := range updates {
+		id := update.IDField.ID
+		updateDTO := update.{{.EntityName}}Update
+		{{camelCase .EntityName}}, err := r.Update(*id, &updateDTO)
+		if err != nil {
+			results[i] = err
+		} else {
+			results[i] = {{camelCase .EntityName}}
+		}
+	}
+
+	return results
+}
+
+// Delete removes a {{.EntityName}} from the database
+func (r *{{.EntityName}}Repository) BaseDelete(id {{.GetPrimaryKeyType}}) error {
+	// Hard delete
+	r.DB.Exec("PRAGMA foreign_keys = ON")
+	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
+		return errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+	
+	return nil
+}
+
+
+// Helper functions
+func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
+	if model == nil {
+		return nil
+	}
+  return &dto.{{.EntityName}}Response{
+  Base{{.EntityName}}Response: dto.Base{{.EntityName}}Response{
+		{{- range .Fields}}
+		{{- if not .Virtual}}
+		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
+		{{- end}}
+		{{- end}}
+		{{- range .Relations}}
+    {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
+    {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
+		{{- end}}
+    {{- if eq .RelationType "ManyToMany" }}
+    {{toGoFieldName .FieldName}}: lo.Map(model.{{toGoFieldName .FieldName}}, func(item models.{{.RelatedEntity}}, _ int) dto.{{.RelatedEntity}}Response {
+			return *To{{.RelatedEntity}}Response(&item)
+		}),
+		{{- end}}
+		{{- end}}
+		BaseModelResponse:   dto.BaseModelResponse{CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt},
+	},
+  }
+}

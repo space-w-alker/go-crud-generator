@@ -123,7 +123,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @Accept json
 // @Produce json
 // @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
-// @Param query query dto.SessionClassQueryExtraOptions false "Query parameters"
+// @Param query query dto.{{.EntityName}}QueryExtraOptions false "Query parameters"
 // @Success 200 {object} dto.{{.EntityName}}Response
 // @Failure 404 {object} errs.ServerError "Not found"
 // @Failure 500 {object} errs.ServerError "Server error"
@@ -131,7 +131,7 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @ID get{{.EntityName}}ById
 func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
-	var query dto.SessionClassQueryExtraOptions
+	var query dto.{{.EntityName}}QueryExtraOptions
 
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))

@@ -1,0 +1,27 @@
+
+package dto
+
+// UserUpdate represents the data transfer object for updating a user
+type UserUpdateOverride struct {
+	UserUpdate
+
+	// For student-class many-to-many relationship
+	SessionClassIDs       []string `json:"sessionClassIDs,omitempty"`
+	SessionClassID        *string  `json:"sessionClassID,omitempty"`
+	RemoveSessionClassIDs []string `json:"removeSessionClassIDs,omitempty"`
+	ClearSessionClasses   *bool    `json:"clearSessionClasses,omitempty"`
+
+	// For teacher-class many-to-many relationship
+	ClassTeacherOfIDs     []string `json:"classTeacherOfIDs,omitempty"`
+	ClassTeacherOfID      *string  `json:"classTeacherOfID,omitempty"`
+	RemoveClassTeacherIDs []string `json:"removeClassTeacherIDs,omitempty"`
+	ClearClassTeacher     *bool    `json:"clearClassTeacher,omitempty"`
+}
+
+type UserQueryExtraOptions struct {
+	Preload                 []string `form:"preload[],omitempty" json:"preload[],omitempty"`
+	SessionClassID          *string  `form:"sessionClassID,omitempty" json:"sessionClassID,omitempty"`
+	ClassTeacherOfClassID   *string  `form:"classTeacherOfClassID,omitempty" json:"classTeacherOfClassID,omitempty"`
+	SubjectTeacherOfClassID *string  `form:"subjectTeacherOfClassID,omitempty" json:"subjectTeacherOfClassID,omitempty"`
+	TeacherOfSubjectID      *string  `form:"teacherOfSubjectID,omitempty" json:"teacherOfSubjectID,omitempty"`
+}

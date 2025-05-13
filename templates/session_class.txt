@@ -1,0 +1,28 @@
+
+package dto
+
+// SessionClassUpdate represents the data transfer object for updating a session class
+type SessionClassUpdateOverride struct {
+	ClassID   *string `json:"classID,omitempty"`
+	SessionID *string `json:"sessionID,omitempty"`
+
+	// For student many-to-many relationship
+	StudentIDs       []string `json:"studentIDs,omitempty"`
+	StudentID        *string  `json:"studentID,omitempty"`
+	RemoveStudentIDs []string `json:"removeStudentIDs,omitempty"`
+	ClearStudents    *bool    `json:"clearStudents,omitempty"`
+
+	// For class teacher many-to-many relationship
+	ClassTeacherIDs       []string `json:"classTeacherIDs,omitempty"`
+	ClassTeacherID        *string  `json:"classTeacherID,omitempty"`
+	RemoveClassTeacherIDs []string `json:"removeClassTeacherIDs,omitempty"`
+	ClearClassTeachers    *bool    `json:"clearClassTeachers,omitempty"`
+
+	// For updating the associated Class model
+	Class *ClassUpdate `json:"class,omitempty"`
+}
+
+type SessionClassQueryExtraOptions struct {
+	IncludeCount bool     `json:"includeCount"`
+	Preload      []string `form:"preload[],omitempty" json:"preload[],omitempty"`
+}

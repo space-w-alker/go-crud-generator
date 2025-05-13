@@ -4,8 +4,8 @@ import (
 	"time"
 )
 
-// {{.EntityName}}Create DTO for creating a new {{.EntityName}}
-type {{.EntityName}}Create struct {
+// Base{{.EntityName}}Create DTO for creating a new {{.EntityName}}
+type Base{{.EntityName}}Create struct {
 	{{- range .Fields}}
 	{{- if not .Virtual}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
@@ -23,7 +23,7 @@ type {{.EntityName}}BulkCreate struct {
 }
 
 // {{.EntityName}}Update DTO for updating an existing {{.EntityName}}
-type {{.EntityName}}Update struct {
+type Base{{.EntityName}}Update struct {
 	{{- range .Fields}}
   {{- if and (not .Primary) (not .Virtual)}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty"`
@@ -45,8 +45,8 @@ type {{.EntityName}}BulkUpdate struct {
   {{.EntityName}}s []*{{.EntityName}}UpdateWithID `json:"{{camelCase .EntityNamePlural}}" binding:"required,min=1"`
 }
 
-// {{.EntityName}}Response DTO for responding with {{.EntityName}} data
-type {{.EntityName}}Response struct {
+// Base{{.EntityName}}Response DTO for responding with {{.EntityName}} data
+type Base{{.EntityName}}Response struct {
 	{{- range .Fields}}
 	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
 	{{- end}}

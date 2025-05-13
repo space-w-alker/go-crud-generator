@@ -1,0 +1,58 @@
+package dto
+
+import "time"
+
+type PeriodCreateOverride struct {
+	ID                *string    `json:"id" validate:"omitempty,uuid4"`
+	Day               *time.Time `json:"day" validate:"required_if=CreateForAllWeeks false"`
+	StartHour         *int       `json:"startHour" validate:"required,min=0,max=23"`
+	StartMinute       *int       `json:"startMinute" validate:"required,min=0,max=59"`
+	EndHour           *int       `json:"endHour" validate:"required,min=0,max=23"`
+	EndMinute         *int       `json:"endMinute" validate:"required,min=0,max=59"`
+	GenericPeriodID   *string    `json:"genericPeriodId" validate:"omitempty,uuid4"`
+	TermID            *string    `form:"termID,omitempty" json:"termID,omitempty"`
+	SessionClassID    *string    `form:"sessionClassID,omitempty" json:"sessionClassID,omitempty"`
+	TeacherID         *string    `form:"teacherID,omitempty" json:"teacherID,omitempty"`
+	SubjectID         *string    `form:"subjectID,omitempty" json:"subjectID,omitempty"`
+	CreateForAllWeeks bool       `json:"allWeeks" validate:"boolean"`
+}
+
+type PeriodUpdateOverride struct {
+	ID                *string    `json:"id" validate:"omitempty,uuid4"`
+	Day               *time.Time `json:"day" validate:"required"`
+	StartHour         *int       `json:"startHour" validate:"required,min=0,max=23"`
+	StartMinute       *int       `json:"startMinute" validate:"required,min=0,max=59"`
+	EndHour           *int       `json:"endHour" validate:"required,min=0,max=23"`
+	EndMinute         *int       `json:"endMinute" validate:"required,min=0,max=59"`
+	GenericPeriodID   *string    `json:"genericPeriodId"`
+	TermID            *string    `json:"termId" validate:"required"`
+	SessionClassID    *string    `form:"sessionClassID,omitempty" json:"sessionClassID,omitempty"`
+	SubjectID         *string    `json:"subjectId"`
+	TeacherID         *string    `form:"teacherID,omitempty" json:"teacherID,omitempty"`
+	UpdateForAllWeeks bool       `json:"allWeeks" validate:"boolean"`
+}
+
+type PeriodQueryOverride struct {
+	DayAfter        *time.Time `form:"dayAfter,omitempty" json:"dayAfter,omitempty"`
+	DayBefore       *time.Time `form:"dayBefore,omitempty" json:"dayBefore,omitempty"`
+	StartHour       *int       `form:"startHour,omitempty" json:"startHour,omitempty"`
+	StartMinute     *int       `form:"startMinute,omitempty" json:"startMinute,omitempty"`
+	EndHour         *int       `form:"endHour,omitempty" json:"endHour,omitempty"`
+	EndMinute       *int       `form:"endMinute,omitempty" json:"endMinute,omitempty"`
+	GenericPeriodID *string    `form:"genericPeriodID,omitempty" json:"genericPeriodID,omitempty"`
+	TermID          *string    `form:"termID,omitempty" json:"termID,omitempty"`
+	SessionClassID  *string    `form:"sessionClassID,omitempty" json:"sessionClassID,omitempty"`
+	TeacherID       *string    `form:"teacherID,omitempty" json:"teacherID,omitempty"`
+	SubjectID       *string    `form:"subjectID,omitempty" json:"subjectID,omitempty"`
+}
+
+type FullPeriodQueryOverride struct {
+	PeriodQueryOverride
+	DateQuery
+	PaginationQuery
+	PeriodQueryExtraOptions
+}
+
+type PeriodQueryExtraOptions struct {
+	Preload []string `form:"preload[],omitempty" json:"preload[],omitempty"`
+}
