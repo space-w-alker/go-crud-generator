@@ -68,7 +68,9 @@ func (input *Entity) GetTableName() string {
 	if input.TableName != "" {
 		return input.TableName
 	}
-	return lo.SnakeCase(input.EntityName) + "s"
+	w := strings.Split(lo.SnakeCase(input.EntityName), "_")
+	w[len(w)-1] = Pluralize(w[len(w)-1])
+	return strings.Join(w, "_")
 }
 
 func (input *Entity) EntityNameLower() string {
@@ -158,6 +160,7 @@ func toSnakeCase(s string) string {
 // Template helpers
 var templateFuncs = template.FuncMap{
 	"toGoFieldName":             toGoFieldName,
+	"pluralize":                 Pluralize,
 	"lower":                     func() string { return "" },
 	"snakeCase":                 lo.SnakeCase,
 	"pascalCase":                lo.PascalCase,
@@ -557,6 +560,88 @@ func AssignRelations(entities []Entity) {
 			}
 		}
 	}
+}
+
+func Pluralize(word string) string {
+	// Handle empty strings
+	if word == "" {
+		return ""
+	}
+
+	// Convert to lowercase for easier checking
+	lowerWord := strings.ToLower(word)
+
+	// Special cases and irregular plurals
+	switch lowerWord {
+	case "child":
+		return word + "ren"
+	case "person":
+		return "people"
+	case "ox":
+		return word + "en"
+	case "man":
+		return strings.TrimSuffix(word, "man") + "men"
+	case "woman":
+		return strings.TrimSuffix(word, "woman") + "women"
+	case "tooth":
+		return strings.TrimSuffix(word, "tooth") + "teeth"
+	case "foot":
+		return strings.TrimSuffix(word, "foot") + "feet"
+	case "goose":
+		return strings.TrimSuffix(word, "goose") + "geese"
+	case "mouse":
+		return strings.TrimSuffix(word, "mouse") + "mice"
+	case "deer", "fish", "sheep", "series", "species":
+		return word // Unchanged plurals
+	}
+
+	// Words ending in s, x, z, ch, sh
+	if strings.HasSuffix(lowerWord, "s") ||
+		strings.HasSuffix(lowerWord, "x") ||
+		strings.HasSuffix(lowerWord, "z") ||
+		strings.HasSuffix(lowerWord, "ch") ||
+		strings.HasSuffix(lowerWord, "sh") {
+		return word + "es"
+	}
+
+	// Words ending in consonant + y
+	if strings.HasSuffix(lowerWord, "y") {
+		lastIndex := len(word) - 1
+		secondLastChar := ""
+		if lastIndex > 0 {
+			secondLastChar = string(word[lastIndex-1])
+		}
+
+		vowels := "aeiou"
+		if !strings.Contains(vowels, secondLastChar) {
+			return word[:lastIndex] + "ies"
+		}
+	}
+
+	// Words ending in o
+	if strings.HasSuffix(lowerWord, "o") {
+		// Common exceptions that end in -os
+		exceptions := []string{"photo", "piano", "halo", "studio"}
+		for _, exception := range exceptions {
+			if lowerWord == exception {
+				return word + "s"
+			}
+		}
+
+		// Most words ending in o get -es
+		return word + "es"
+	}
+
+	// Words ending in f or fe
+	if strings.HasSuffix(lowerWord, "f") {
+		return strings.TrimSuffix(word, "f") + "ves"
+	}
+	if strings.HasSuffix(lowerWord, "fe") {
+		return strings.TrimSuffix(word, "fe") + "ves"
+	}
+
+	// Default rule: add s
+	return word + "s"
 }
 
 // TopologicalSortEntities sorts entities by their dependencies
