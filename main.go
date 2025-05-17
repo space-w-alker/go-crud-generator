@@ -161,7 +161,7 @@ func toSnakeCase(s string) string {
 var templateFuncs = template.FuncMap{
 	"toGoFieldName":             toGoFieldName,
 	"pluralize":                 Pluralize,
-	"lower":                     func() string { return "" },
+	"lower":                     strings.ToLower,
 	"snakeCase":                 lo.SnakeCase,
 	"pascalCase":                lo.PascalCase,
 	"camelCase":                 lo.CamelCase,
@@ -400,7 +400,7 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "models", "utils.go"), path.Join("templates", "model_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "routes.go"), path.Join("templates", "routes.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "wire.go"), path.Join("templates", "wire.tmpl"), d, false); err != nil {
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d, false); err != nil {
@@ -470,16 +470,16 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 		return fmt.Errorf("error generating file %s: %v", repositoryPath, err)
 	}
 
-	controllersPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go")
-	controllersTempPath := filepath.Join("templates", "controller.tmpl")
-	if err := generateFileFromTemplate(controllersPath, controllersTempPath, templateData, true); err != nil {
-		return fmt.Errorf("error generating file %s: %v", controllersPath, err)
+	baseControllersPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go")
+	baseControllersTempPath := filepath.Join("templates", "controller_base.tmpl")
+	if err := generateFileFromTemplate(baseControllersPath, baseControllersTempPath, templateData, false); err != nil {
+		return fmt.Errorf("error generating file %s: %v", baseControllersPath, err)
 	}
 
-	contMainPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+".go")
-	contMainTempPath := filepath.Join("templates", "main.controller.tmpl")
-	if err := generateFileFromTemplate(contMainPath, contMainTempPath, templateData, true); err != nil {
-		return fmt.Errorf("error generating file %s: %v", contMainPath, err)
+	controllerPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+".go")
+	controllerTempPath := filepath.Join("templates", "controller.tmpl")
+	if err := generateFileFromTemplate(controllerPath, controllerTempPath, templateData, true); err != nil {
+		return fmt.Errorf("error generating file %s: %v", controllerPath, err)
 	}
 
 	return nil

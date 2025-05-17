@@ -1,253 +1,42 @@
-//nolint:dupl // Disable dupl linter for this entire file
 package controllers
 
-import (
-	"net/http"
-	"strconv"
-	
-	"github.com/gin-gonic/gin"
-	"{{.ModuleName}}/errs"
-	"{{.ModuleName}}/errs/errcodes"
-	"{{.ModuleName}}/dto"
-	"{{.ModuleName}}/repositories"
-	"gorm.io/gorm"
+import "github.com/gin-gonic/gin"
+
+var {{.EntityName}}ProviderSet = wire.NewSet(
+	New{{.EntityName}}Controller,
+	repositories.New{{.EntityName}}Repository,
+	repositories.Provide{{.EntityName}}Repo,
 )
 
 // {{.EntityName}}Controller handles HTTP requests for {{.EntityName}}
 type {{.EntityName}}Controller struct {
-	repository *repositories.{{.EntityName}}Repository
+	repository repositories.I{{.EntityName}}Repository
 }
 
 // New{{.EntityName}}Controller creates a new controller
-func New{{.EntityName}}Controller(repository *repositories.{{.EntityName}}Repository) *{{.EntityName}}Controller {
-	return &{{.EntityName}}Controller{repository: repository}
+func New{{.EntityName}}Controller(repository repositories.I{{.EntityName}}Repository, router *gin.RouterGroup) *{{.EntityName}}Controller {
+	controller := &{{.EntityName}}Controller{repository: repository}
+  controller.RegisterRoutes(router)
+  return controller
 }
 
-
-
-// Create handles creating a new {{.EntityName}}
-// @Summary Create a new {{.EntityName}}
-// @Description Create a new {{.EntityName}} with the input payload
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param {{.EntityName}} body dto.{{.EntityName}}Create true "{{.EntityName}} object that needs to be created"
-// @Success 201 {object} dto.{{.EntityName}}Response
-// @Failure 400 {object} errs.ServerError "Invalid input"
-// @Failure 500 {object} errs.ServerError "Server error"
-// @Router /{{snakeCase .EntityName}} [post]
-// @ID create{{.EntityName}}
-func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
-	var input dto.{{.EntityName}}Create
-	
-	if err := ctx.ShouldBindJSON(&input); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
+// RegisterRoutes sets up the routing for the {{.EntityName}} controller
+func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.RouterGroup) {
+	{{.EntityName}} := router.Group("/{{snakeCase .EntityName}}")
+	{
+		{{.EntityName}}.POST("", c.Create)
+		{{.EntityName}}.POST("bulk", c.BulkCreate)
+		{{.EntityName}}.GET("", func(ctx *gin.Context) {
+			c.GetAll(ctx)
+		})
+		{{.EntityName}}.GET("/:id", c.GetByID)
+		{{.EntityName}}.PUT("/:id", c.Update)
+		{{.EntityName}}.PUT("bulk", c.BulkUpdate)
+		{{.EntityName}}.DELETE("/:id", c.Delete)
+		
+		// Custom endpoints
+		{{- range .CustomEndpoints}}
+		{{.EntityName}}.{{.HTTPMethod}}("{{.Path}}", c.{{.EndpointName}})
+		{{- end}}
 	}
-	
-	{{.EntityName}}, err := c.repository.Create(&input)
-	if err != nil {
-		ctx.JSON(errs.GetStatusCode(err), err)
-		return
-	}
-	
-	ctx.JSON(http.StatusCreated, repositories.To{{.EntityName}}Response({{.EntityName}}))
 }
-
-
-// BulkCreate handles creating multiple {{.EntityNamePlural}}
-// @Summary Create multiple {{.EntityNamePlural}}
-// @Description Create multiple {{.EntityNamePlural}} with the input payload
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param {{.EntityNamePlural}} body dto.{{.EntityName}}BulkCreate true "Array of {{.EntityName}} objects that need to be created"
-// @Success 207 {array} dto.{{.EntityName}}Response "Multi-status response (may contain both success and error responses)"
-// @Failure 400 {object} errs.ServerError "Invalid input"
-// @Router /{{snakeCase .EntityName}}/bulk [post]
-// @ID bulkCreate{{.EntityName}}
-func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
-	var input dto.{{.EntityName}}BulkCreate
-
-	if err := ctx.ShouldBindJSON(&input); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
-	}
-
-	results := c.repository.BulkCreate(input.{{.EntityNamePlural}})
-
-	ctx.JSON(http.StatusMultiStatus, results)
-}
-
-// GetAll handles retrieving all {{.EntityNamePlural}}
-// @Summary Get all {{.EntityNamePlural}}
-// @Description Get all {{.EntityNamePlural}} with optional filtering
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param query query dto.Full{{.EntityName}}Query false "Query parameters"
-// @Success 200 {object} dto.Paginated{{.EntityName}}Response
-// @Failure 500 {object} errs.ServerError "Server error"
-// @Router /{{snakeCase .EntityName}} [get]
-// @ID getAll{{.EntityName}}
-func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gorm.DB) *gorm.DB) {
-	var query dto.Full{{.EntityName}}Query
-	
-	if err := ctx.ShouldBindQuery(&query); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
-	}
-	
-	{{.EntityNameLower}}s, p, err := c.repository.GetAll(&query, scopes...)
-	if err != nil {
-		ctx.JSON(errs.GetStatusCode(err), err)
-		return
-	}
-	
-	// Convert to response DTOs
-  response := make([]*dto.{{.EntityName}}Response, 0, len({{.EntityNameLower}}s))
-	for _, {{.EntityName}} := range {{.EntityNameLower}}s {
-		response = append(response, repositories.To{{.EntityName}}Response(&{{.EntityName}}))
-	}
-	
-  paginated := dto.Paginated{{.EntityName}}Response{Items: response, PaginationResponse: dto.PaginationResponse{
-		PageSize: p.Limit, TotalPages: p.TotalPages, TotalItemCount: p.TotalRows,
-	}}
-	ctx.JSON(http.StatusOK, paginated)
-}
-
-// GetByID handles retrieving a single {{.EntityName}} by ID
-// @Summary Get a {{.EntityName}} by ID
-// @Description Get a {{.EntityName}} by ID
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
-// @Param query query dto.{{.EntityName}}QueryExtraOptions false "Query parameters"
-// @Success 200 {object} dto.{{.EntityName}}Response
-// @Failure 404 {object} errs.ServerError "Not found"
-// @Failure 500 {object} errs.ServerError "Server error"
-// @Router /{{snakeCase .EntityName}}/{id} [get]
-// @ID get{{.EntityName}}ById
-func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
-	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
-	var query dto.{{.EntityName}}QueryExtraOptions
-
-	if err := ctx.ShouldBindQuery(&query); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
-	}
-	
-	{{.EntityName}}, err := c.repository.GetByID(id, &query)
-	if err != nil {
-		ctx.JSON(errs.GetStatusCode(err), err)
-		return
-	}
-	
-	ctx.JSON(http.StatusOK, repositories.To{{.EntityName}}Response({{.EntityName}}))
-}
-
-// Update handles updating an existing {{.EntityName}}
-// @Summary Update a {{.EntityName}}
-// @Description Update a {{.EntityName}} with the input payload
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
-// @Param {{.EntityName}} body dto.{{.EntityName}}Update true "{{.EntityName}} object that needs to be updated"
-// @Success 200 {object} dto.{{.EntityName}}Response
-// @Failure 400 {object} errs.ServerError "Invalid input"
-// @Failure 404 {object} errs.ServerError "Not found"
-// @Failure 500 {object} errs.ServerError "Server error"
-// @Router /{{snakeCase .EntityName}}/{id} [put]
-// @ID update{{.EntityName}}
-func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
-	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
-	
-	var input dto.{{.EntityName}}Update
-	if err := ctx.ShouldBindJSON(&input); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
-	}
-	
-	{{.EntityName}}, err := c.repository.Update(id, &input)
-	if err != nil {
-		ctx.JSON(errs.GetStatusCode(err), err)
-		return
-	}
-	
-	ctx.JSON(http.StatusOK, repositories.To{{.EntityName}}Response({{.EntityName}}))
-}
-
-
-// BulkUpdate handles updating multiple {{.EntityNamePlural}}
-// @Summary Update multiple {{.EntityNamePlural}}
-// @Description Update multiple {{.EntityNamePlural}} with the input payload
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param {{.EntityNamePlural}} body dto.{{.EntityName}}BulkUpdate true "Array of {{.EntityName}} objects that need to be updated"
-// @Success 207 {array} dto.{{.EntityName}}Response "Multi-status response (may contain both success and error responses)"
-// @Failure 400 {object} errs.ServerError "Invalid input"
-// @Router /{{snakeCase .EntityName}}/bulk [put]
-// @ID bulkUpdate{{.EntityName}}
-func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context) {
-	var input dto.{{.EntityName}}BulkUpdate
-
-	if err := ctx.ShouldBindJSON(&input); err != nil {
-		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
-		return
-	}
-
-	results := c.repository.BulkUpdate(input.{{.EntityNamePlural}})
-
-	ctx.JSON(http.StatusMultiStatus, results)
-}
-
-// Delete handles removing a {{.EntityName}}
-// @Summary Delete a {{.EntityName}}
-// @Description Delete a {{.EntityName}} by ID
-// @Tags {{.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Param id path {{.GetPrimaryKeyType}} true "{{.EntityName}} ID"
-// @Success 204 "No Content"
-// @Failure 404 {object} errs.ServerError "Not found"
-// @Failure 500 {object} errs.ServerError "Server error"
-// @Router /{{snakeCase .EntityName}}/{id} [delete]
-// @ID delete{{.EntityName}}
-func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
-	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
-	
-	if err := c.repository.Delete(id); err != nil {
-		ctx.JSON(errs.GetStatusCode(err), err)
-		return
-	}
-	
-	ctx.Status(http.StatusNoContent)
-}
-
-{{- range .CustomEndpoints}}
-// {{.EndpointName}} handles the custom endpoint {{.Path}}
-// @Summary {{.Description}}
-// @Description {{.Description}}
-// @Tags {{$.EntityNamePlural}}
-// @Accept json
-// @Produce json
-// @Router /{{snakeCase .EntityName}}s{{.Path}} [{{.HTTPMethod | lower}}]
-func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context) {
-	// Custom endpoint implementation
-	ctx.JSON(http.StatusOK, gin.H{"message": "Not implemented yet"})
-}
-{{- end}}
-
-
-func parse{{.EntityName}}PrimaryKey(param string) {{.GetPrimaryKeyType}} {
-	{{- if eq (.GetPrimaryKeyType) "uint" "int" "int64" "uint64"}}
-	id, _ := strconv.Atoi(param)
-	return {{.GetPrimaryKeyType}}(id)
-	{{- else}}
-	return param
-	{{- end}}
-}
-

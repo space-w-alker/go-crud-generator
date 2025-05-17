@@ -11,15 +11,16 @@ import (
 	"gorm.io/gorm"
 )
 
-// {{.EntityName}}Repository handles database operations for {{.EntityName}}
-type {{.EntityName}}Repository struct {
-	DB *gorm.DB
+
+var {{.EntityName}}ProviderSet = wire.NewSet(
+	New{{.EntityName}}Repository,
+	Provide{{.EntityName}}Repo,
+)
+
+func Provide{{.EntityName}}Repo(repo *{{.EntityName}}Repository) I{{.EntityName}}Repository {
+	return repo
 }
 
-// New{{.EntityName}}Repository creates a new repository
-func New{{.EntityName}}Repository(db *gorm.DB) *{{.EntityName}}Repository {
-	return &{{.EntityName}}Repository{DB: db}
-}
 
 // Create adds a new {{.EntityName}} to the database
 func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {

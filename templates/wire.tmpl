@@ -1,0 +1,39 @@
+//go:build wireinject
+// +build wireinject
+package {{.PackageName}}
+
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/google/wire"
+	"github.com/space-w-alker/campus-nexus/internal/server/controllers"
+	"gorm.io/gorm"
+)
+
+
+func SetupControllersAndRoutes(r *gin.RouterGroup, db *gorm.DB) *App {
+	wire.Build(NewApp,
+	  {{- range .Entities}}
+    controllers.{{.EntityName}}ProviderSet,
+    {{- end}}
+  )
+	return nil
+}
+
+type App struct {
+	{{- range .Entities}}
+	{{.EntityName}}Controller *controllers.{{.EntityName}}Controller
+  {{- end}}
+}
+
+func NewApp(
+	{{- range .Entities}}
+	{{camelCase .EntityName}}Controller *controllers.{{.EntityName}}Controller,
+  {{- end}}
+) *App {
+	return &App{
+	  {{- range .Entities}}
+		{{.EntityName}}Controller: {{camelCase .EntityName}}Controller,
+    {{- end}}
+	}
+}

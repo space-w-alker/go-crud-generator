@@ -1,5 +1,26 @@
 package repositories
 
+// {{.EntityName}}Repository defines the interface for {{.EntityName}} database operations
+type I{{.EntityName}}Repository interface {
+	Create(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error)
+	BulkCreate(creates []*dto.{{.EntityName}}Create) []any
+	GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error)
+	GetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.{{.EntityName}}QueryExtraOptions) (*models.{{.EntityName}}, error)
+	Update(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error)
+	BulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any
+	Delete(id {{.GetPrimaryKeyType}}) error
+}
+
+// {{.EntityName}}Repository handles database operations for {{.EntityName}}
+type {{.EntityName}}Repository struct {
+	DB *gorm.DB
+}
+
+// New{{.EntityName}}Repository creates a new repository
+func New{{.EntityName}}Repository(db *gorm.DB) *{{.EntityName}}Repository {
+	return &{{.EntityName}}Repository{DB: db}
+}
+
 
 // Create adds a new {{.EntityName}} to the database
 func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
