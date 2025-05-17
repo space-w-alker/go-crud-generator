@@ -472,7 +472,7 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 
 	baseControllersPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go")
 	baseControllersTempPath := filepath.Join("templates", "controller_base.tmpl")
-	if err := generateFileFromTemplate(baseControllersPath, baseControllersTempPath, templateData, false); err != nil {
+	if err := generateFileFromTemplate(baseControllersPath, baseControllersTempPath, templateData, true); err != nil {
 		return fmt.Errorf("error generating file %s: %v", baseControllersPath, err)
 	}
 
