@@ -40,12 +40,12 @@ func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create
   }
   {{- end}}
   {{- end}}
-	
+
 	// Save to database
 	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
     return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
-	
+
 	return {{.EntityNameLower}}, nil
 }
 
@@ -102,14 +102,14 @@ func (r *{{.EntityName}}Repository) BaseGetByID(id {{.GetPrimaryKeyType}}, opt .
 	if (len(opt)) > 0 {
 		options = opt[0]
 	}
-	
+
 	if err := r.DB.Scopes(PreloadRelations(options.Preload)).First(&{{.EntityNameLower}}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
 		}
 		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
-	
+
 	return &{{.EntityNameLower}}, nil
 }
 
@@ -121,7 +121,7 @@ func (r *{{.EntityName}}Repository) BaseUpdate(id {{.GetPrimaryKeyType}}, update
 	}
 
 	r.DB.Exec("PRAGMA foreign_keys = ON")
-	
+
   if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
 		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
@@ -155,7 +155,7 @@ func (r *{{.EntityName}}Repository) BaseDelete(id {{.GetPrimaryKeyType}}) error 
 	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
 		return errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
-	
+
 	return nil
 }
 
@@ -177,7 +177,7 @@ func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName
 		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
     {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
 		{{- end}}
-    {{- if eq .RelationType "ManyToMany" }}
+    {{- if or (eq .RelationType "ManyToMany") (eq .RelationType "OneToMany") }}
     {{toGoFieldName .FieldName}}: lo.Map(model.{{toGoFieldName .FieldName}}, func(item models.{{.RelatedEntity}}, _ int) dto.{{.RelatedEntity}}Response {
 			return *To{{.RelatedEntity}}Response(&item)
 		}),
