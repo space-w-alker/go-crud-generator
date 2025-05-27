@@ -102,7 +102,7 @@ function mapFieldType(type) {
     text: "string",
     number: "number",
     integer: "number",
-    decimal: "number",
+    decimal: "decimal",
     boolean: "boolean",
     date: "date",
     timestamp: "date",
@@ -112,7 +112,7 @@ function mapFieldType(type) {
     interval: "string",
   };
 
-  return typeMap[type] || "string";
+  return typeMap[type] || type;
 }
 
 function mapRelationType(type) {

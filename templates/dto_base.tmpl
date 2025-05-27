@@ -67,10 +67,6 @@ type {{.EntityName}}Query struct {
   {{- if and .FilterBy (ne .FieldType "date") (not .Virtual) }}
   {{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `form:"{{.FieldName}},omitempty" json:"{{.FieldName}},omitempty"`
   {{- end}}
-  {{- if and .FilterBy (eq .FieldType "date") (not .Virtual) }}
-    {{pascalCase .FieldName}}After *time.Time `form:"{{camelCase .FieldName}}After,omitempty" json:"{{camelCase .FieldName}}After,omitempty"`
-    {{pascalCase .FieldName}}Before *time.Time `form:"{{camelCase .FieldName}}Before,omitempty" json:"{{camelCase .FieldName}}Before,omitempty"`
-  {{- end}}
   {{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}

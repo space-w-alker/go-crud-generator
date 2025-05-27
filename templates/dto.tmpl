@@ -16,6 +16,12 @@ type {{.EntityName}}Response struct {
 }
 
 type {{.EntityName}}QueryExtraOptions struct {
+  {{- range .Fields}}
+  {{- if and .FilterBy (eq .FieldType "date") (not .Virtual) }}
+    {{pascalCase .FieldName}}After *time.Time `form:"{{camelCase .FieldName}}After,omitempty" json:"{{camelCase .FieldName}}After,omitempty"`
+    {{pascalCase .FieldName}}Before *time.Time `form:"{{camelCase .FieldName}}Before,omitempty" json:"{{camelCase .FieldName}}Before,omitempty"`
+  {{- end}}
+  {{- end}}
 	Preload      []string `form:"preload[],omitempty" json:"preload[],omitempty"`
 }
 
