@@ -55,9 +55,13 @@ func (p *Pagination) Paginate() func(db *gorm.DB) *gorm.DB {
 }
 
 // Count sets the total rows and pages count
-func (p *Pagination) Count(db *gorm.DB, model interface{}) error {
+func (p *Pagination) Count(db *gorm.DB, model interface{}, primaryKey ...string) error {
 	var totalRows int64
-	if err := db.Model(model).Count(&totalRows).Error; err != nil {
+	pKey := "id"
+	if primaryKey != nil {
+		pKey = primaryKey[0]
+	}
+	if err := db.Distinct(pKey).Model(model).Count(&totalRows).Error; err != nil {
 		return err
 	}
 

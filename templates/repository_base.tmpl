@@ -77,18 +77,26 @@ func (r *{{.EntityName}}Repository) BaseGetAll(q *dto.Full{{.EntityName}}Query, 
     ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
   )
 
-	query := r.DB.Model(&models.{{.EntityName}}{})
-	query.Scopes(scopes...)
+	getQuery := func() *gorm.DB {
+		query := r.DB.Session(&gorm.Session{NewDB: true}).Model(&models.{{.EntityName}}{})
+		query.Scopes(scopes...)
 
-	query.Where(&(q.{{.EntityName}}Query))
+		query.Where(&(q.{{.EntityName}}Query))
+		return query
+	}
 
-	p := NewPagination(q.Page, q.Size, q.SortBy, q.SortOrder)
+	sortBy := "{{.GetTableName}}.created_at"
+	if q.SortBy != nil {
+		sortBy = *q.SortBy
+	}
 
-	if err := p.Count(query, &models.{{.EntityName}}{}); err != nil {
+	p := NewPagination(q.Page, q.Size, &sortBy, q.SortOrder)
+
+	if err := p.Count(getQuery(), &models.{{.EntityName}}{}, "{{.GetTableName}}.id"); err != nil {
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
-	if err := query.Scopes(p.Paginate(), PreloadRelations(q.Preload)).Find(&{{.EntityNameLower}}s).Error; err != nil {
+	if err := getQuery().Scopes(p.Paginate(), PreloadRelations(q.Preload)).Find(&{{.EntityNameLower}}s).Error; err != nil {
     return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
