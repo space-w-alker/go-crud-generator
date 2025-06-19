@@ -1,4 +1,3 @@
-
 package errs
 
 import (
@@ -66,6 +65,9 @@ func GetStatusCode(err error) int {
 			return http.StatusInternalServerError // 500
 
 		case errcodes.CodeInvalidRequest:
+			return http.StatusBadRequest // 400
+
+		case errcodes.CodeValidationError:
 			return http.StatusBadRequest // 400
 
 		default:

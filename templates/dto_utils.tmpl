@@ -33,17 +33,17 @@ type RefreshTokenInput struct {
 }
 
 type PaginationQuery struct {
-	Q         *string  `form:"q,omitempty" json:"q,omitempty"`
-	Page      *int     `form:"page,omitempty" json:"page,omitempty"`
-	Size      *int     `form:"size,omitempty" json:"size,omitempty"`
-	SortBy    *string  `form:"sortBy,omitempty" json:"sortBy,omitempty"`
-	SortOrder *string  `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
+	Q         *string `form:"q,omitempty" json:"q,omitempty"`
+	Page      *int    `form:"page,omitempty" json:"page,omitempty"`
+	Size      *int    `form:"size,omitempty" json:"size,omitempty"`
+	SortBy    *string `form:"sortBy,omitempty" json:"sortBy,omitempty"`
+	SortOrder *string `form:"sortOrder,omitempty" json:"sortOrder,omitempty"`
 }
 
 type PaginationResponse struct {
-	PageSize       int `form:"pageSize,omitempty" json:"pageSize,omitempty"`
-	TotalPages     int `form:"totalPages,omitempty" json:"totalPages,omitempty"`
-	TotalItemCount int `form:"totalItemCount,omitempty" json:"totalItemCount,omitempty"`
+	PageSize       *int `form:"pageSize,omitempty" json:"pageSize,omitempty"`
+	TotalPages     *int `form:"totalPages,omitempty" json:"totalPages,omitempty"`
+	TotalItemCount *int `form:"totalItemCount,omitempty" json:"totalItemCount,omitempty"`
 }
 
 type DateQuery struct {

@@ -15,6 +15,9 @@ type Base{{.EntityName}}Create struct {
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
 	{{- end}}
+  {{- if (eq .RelationType "ManyToMany") }}
+	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty"`
+	{{- end}}
 	{{- end}}
 }
 
@@ -32,6 +35,9 @@ type Base{{.EntityName}}Update struct {
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
 	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
+	{{- end}}
+  {{- if (eq .RelationType "ManyToMany") }}
+	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty"`
 	{{- end}}
 	{{- end}}
 }

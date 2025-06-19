@@ -26,6 +26,7 @@ func Provide{{.EntityName}}Repo(repo *{{.EntityName}}Repository) I{{.EntityName}
 func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
 	{{.EntityNameLower}} := &models.{{.EntityName}}{}
 	{{$parent := .}}
+	
 	// Map DTO to model
 	{{- range .Fields}}
 	{{- if not .Virtual}}
@@ -33,20 +34,86 @@ func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create
 	{{- end}}
 	{{- end}}
 
-  {{- range .Relations}}
-  {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-  if create.{{toGoFieldName .FieldName}}ID != nil {
-	  {{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
-  }
-  {{- end}}
-  {{- end}}
+	{{- range .Relations}}
+	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	if create.{{toGoFieldName .FieldName}}ID != nil {
+		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- end}}
 
+	{{- $hasManyToMany := false}}
+	{{- range .Relations}}
+	{{- if eq .RelationType "ManyToMany"}}
+	{{- $hasManyToMany = true}}
+	{{- break}}
+	{{- end}}
+	{{- end}}
+
+	{{- if $hasManyToMany}}
+	// Start a transaction to ensure data consistency for many-to-many relationships
+	tx := r.DB.Begin()
+	if tx.Error != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, tx.Error.Error()).Occurred()
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Save the main {{.EntityNameLower}} record first
+	if err := tx.Create(&{{.EntityNameLower}}).Error; err != nil {
+		tx.Rollback()
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	{{- range .Relations}}
+	{{- if eq .RelationType "ManyToMany"}}
+	// Handle {{toGoFieldName .FieldName}} many-to-many relationship
+	if len(create.{{toGoFieldName .FieldName}}IDs) > 0 {
+		var {{toLower (toGoFieldName .FieldName)}}Records []models.{{.RelatedEntity}}
+		if err := tx.Where("id IN ?", create.{{toGoFieldName .FieldName}}IDs).Find(&{{toLower (toGoFieldName .FieldName)}}Records).Error; err != nil {
+			tx.Rollback()
+			return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		}
+		
+		// Verify all requested {{.RelatedEntity}} records exist
+		if len({{toLower (toGoFieldName .FieldName)}}Records) != len(create.{{toGoFieldName .FieldName}}IDs) {
+			tx.Rollback()
+			return nil, errs.NewError(errcodes.CodeInvalidRequest, "Some {{toLower .RelatedEntity}} records do not exist").Occurred()
+		}
+		
+		// Associate the {{toGoFieldName .FieldName}} records
+		if err := tx.Model(&{{$parent.EntityNameLower}}).Association("{{toGoFieldName .FieldName}}").Append(&{{toLower (toGoFieldName .FieldName)}}Records); err != nil {
+			tx.Rollback()
+			return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		}
+	}
+	{{- end}}
+	{{- end}}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	result := &models.{{.EntityName}}{}
+	loadQuery := r.DB
+	
+	if err := loadQuery.First(result, "id = ?", {{.EntityNameLower}}.ID).Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	return result, nil
+	{{- else}}
 	// Save to database
 	if err := r.DB.Create(&{{.EntityNameLower}}).Error; err != nil {
-    return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
 	return {{.EntityNameLower}}, nil
+	{{- end}}
 }
 
 
@@ -121,21 +188,147 @@ func (r *{{.EntityName}}Repository) BaseGetByID(id {{.GetPrimaryKeyType}}, opt .
 	return &{{.EntityNameLower}}, nil
 }
 
-// Update updates an existing {{.EntityName}}
-func (r *{{.EntityName}}Repository) BaseUpdate(id {{.GetPrimaryKeyType}}, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
-	{{.EntityNameLower}}, err := r.GetByID(id, &dto.{{.EntityName}}QueryExtraOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	r.DB.Exec("PRAGMA foreign_keys = ON")
-
-  if err := r.DB.Model({{.EntityNameLower}}).Updates(update).Error; err != nil {
+// Update modifies an existing {{.EntityName}} in the database
+func (r *{{.EntityName}}Repository) BaseUpdate(id string, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
+	{{.EntityNameLower}} := &models.{{.EntityName}}{}
+	{{$parent := .}}
+	
+	// Find the existing record
+	if err := r.DB.First({{.EntityNameLower}}, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errs.NewError(errcodes.CodeNotFound, "{{.EntityName}} not found").Occurred()
+		}
 		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
-	// Save changes
-  return {{.EntityNameLower}}, nil
+	{{- $hasManyToMany := false}}
+	{{- range .Relations}}
+	{{- if eq .RelationType "ManyToMany"}}
+	{{- $hasManyToMany = true}}
+	{{- break}}
+	{{- end}}
+	{{- end}}
+
+	{{- if $hasManyToMany}}
+	// Start a transaction to ensure data consistency for many-to-many relationships
+	tx := r.DB.Begin()
+	if tx.Error != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, tx.Error.Error()).Occurred()
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Update basic fields
+	updateData := &models.{{.EntityName}}{}
+	{{- range .Fields}}
+	{{- if not .Virtual}}
+	{{- if .Primary}}
+	// Skip primary key field
+	{{- else}}
+	if update.{{toGoFieldName .FieldName}} != nil {
+		updateData.{{toGoFieldName .FieldName}} = update.{{toGoFieldName .FieldName}}
+	}
+	{{- end}}
+	{{- end}}
+	{{- end}}
+
+	{{- range .Relations}}
+	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	if update.{{toGoFieldName .FieldName}}ID != nil {
+		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- end}}
+
+	// Apply basic field updates
+	if err := tx.Model({{.EntityNameLower}}).Updates(updateData).Error; err != nil {
+		tx.Rollback()
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	{{- range .Relations}}
+	{{- if eq .RelationType "ManyToMany"}}
+	// Handle {{toGoFieldName .FieldName}} many-to-many relationship updates
+	if update.{{toGoFieldName .FieldName}}IDs != nil {
+		// Clear existing associations
+		if err := tx.Model({{$parent.EntityNameLower}}).Association("{{toGoFieldName .FieldName}}").Clear(); err != nil {
+			tx.Rollback()
+			return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		}
+
+		// Add new associations if any
+		if len(update.{{toGoFieldName .FieldName}}IDs) > 0 {
+			var {{toLower (toGoFieldName .FieldName)}}Records []models.{{.RelatedEntity}}
+			if err := tx.Where("id IN ?", update.{{toGoFieldName .FieldName}}IDs).Find(&{{toLower (toGoFieldName .FieldName)}}Records).Error; err != nil {
+				tx.Rollback()
+				return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+			}
+			
+			// Verify all requested {{.RelatedEntity}} records exist
+			if len({{toLower (toGoFieldName .FieldName)}}Records) != len(update.{{toGoFieldName .FieldName}}IDs) {
+				tx.Rollback()
+				return nil, errs.NewError(errcodes.CodeInvalidRequest, "Some {{toLower .RelatedEntity}} records do not exist").Occurred()
+			}
+			
+			// Associate the new {{toGoFieldName .FieldName}} records
+			if err := tx.Model({{$parent.EntityNameLower}}).Association("{{toGoFieldName .FieldName}}").Append(&{{toLower (toGoFieldName .FieldName)}}Records); err != nil {
+				tx.Rollback()
+				return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+			}
+		}
+	}
+	{{- end}}
+	{{- end}}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	// Reload the updated record to get the latest data
+	if err := r.DB.First({{.EntityNameLower}}, "id = ?", id).Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	return {{.EntityNameLower}}, nil
+	{{- else}}
+	// Update basic fields
+	updateData := &models.{{.EntityName}}{}
+	{{- range .Fields}}
+	{{- if not .Virtual}}
+	{{- if .Primary}}
+	// Skip primary key field
+	{{- else}}
+	if update.{{toGoFieldName .FieldName}} != nil {
+		updateData.{{toGoFieldName .FieldName}} = update.{{toGoFieldName .FieldName}}
+	}
+	{{- end}}
+	{{- end}}
+	{{- end}}
+
+	{{- range .Relations}}
+	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	if update.{{toGoFieldName .FieldName}}ID != nil {
+		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- end}}
+
+	// Apply updates to database
+	if err := r.DB.Model({{.EntityNameLower}}).Updates(updateData).Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	// Reload the updated record to get the latest data
+	if err := r.DB.First({{.EntityNameLower}}, "id = ?", id).Error; err != nil {
+		return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+	}
+
+	return {{.EntityNameLower}}, nil
+	{{- end}}
 }
 
 

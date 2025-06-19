@@ -5,17 +5,19 @@ import (
 	"math"
 	"strings"
 
+  "{{.ModuleName}}/dto"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 const (
-	DefaultPageSize = 10
+	DefaultPageSize = 12
 	DefaultPage     = 1
 )
 
 // Pagination holds pagination data
 type Pagination struct {
+	SkipSort   *bool   `json:"shouldSort,omitempty"`
 	Limit      *int    `json:"limit,omitempty"`
 	Page       *int    `json:"page,omitempty"`
 	Sort       *string `json:"sort,omitempty"`
@@ -25,12 +27,17 @@ type Pagination struct {
 }
 
 // New creates a new Pagination instance
-func NewPagination(page *int, size *int, sort *string, sortOrder *string) *Pagination {
+func NewPagination(page *int, size *int, sort *string, sortOrder *string, skipSort ...bool) *Pagination {
+	skip := false
+	if len(skipSort) > 0 {
+		skip = skipSort[0]
+	}
 	return &Pagination{
 		Limit:     size,
 		Page:      page,
 		Sort:      sort,
 		SortOrder: sortOrder,
+		SkipSort:  &skip,
 	}
 }
 
@@ -38,19 +45,63 @@ func NewPagination(page *int, size *int, sort *string, sortOrder *string) *Pagin
 func (p *Pagination) Paginate() func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		// Apply sorting if specified
-		if p.Sort == nil {
-			defaultSort := "created_at"
-			p.Sort = &defaultSort
+		if p.SkipSort == nil || !*p.SkipSort {
+			if p.Sort == nil {
+				defaultSort := "created_at"
+				p.Sort = &defaultSort
+			}
+			if p.SortOrder == nil {
+				defaultOrder := "desc"
+				p.SortOrder = &defaultOrder
+			}
+			isDesc := *p.SortOrder == "desc"
+			db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: *p.Sort}, Desc: isDesc})
 		}
-		if p.SortOrder == nil {
-			defaultOrder := "desc"
-			p.SortOrder = &defaultOrder
-		}
-		isDesc := *p.SortOrder == "desc"
-		db = db.Order(clause.OrderByColumn{Column: clause.Column{Name: *p.Sort}, Desc: isDesc})
 
 		// Apply pagination
 		return db.Offset(p.GetOffset()).Limit(p.GetLimit())
+	}
+}
+
+func FilterDate(filter dto.DateQuery, fieldName ...string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		f := "created_at"
+		if len(fieldName) == 1 {
+			f = fieldName[0]
+		}
+		if filter.After != nil {
+			db = db.Where(fmt.Sprintf("%v >= ?", f), filter.After)
+		}
+		if filter.Before != nil {
+			db = db.Where(fmt.Sprintf("%v <= ?", f), filter.Before)
+		}
+		return db
+	}
+}
+
+func PreloadRelations(p []string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		for _, preload := range p {
+			parts := strings.Split(preload, ";")
+
+			if len(parts) > 1 {
+				relationship := parts[0]
+				condition := parts[1]
+				args := parts[2:]
+
+				conditionArgs := make([]interface{}, len(args))
+				for i, arg := range args {
+					conditionArgs[i] = arg
+				}
+
+				db = db.Preload(relationship, func(db *gorm.DB) *gorm.DB {
+					return db.Where(condition, conditionArgs...)
+				})
+			} else {
+				db = db.Preload(preload)
+			}
+		}
+		return db
 	}
 }
 
@@ -97,13 +148,13 @@ func (p *Pagination) GetPage() int {
 
 // ILikeAny creates a WHERE condition that performs a case-insensitive LIKE search
 // across multiple columns. Returns records where ANY of the columns match the value.
-func ILikeAny(value string, columns ...string) func(db *gorm.DB) *gorm.DB {
+func ILikeAny(value *string, columns ...string) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if len(columns) == 0 || value == nil || *value == "" {
 			return db
 		}
 
-		searchValue := "%" + value + "%"
+		searchValue := "%" + *value + "%"
 		conditions := make([]string, len(columns))
 		args := make([]interface{}, len(columns))
 
@@ -113,48 +164,5 @@ func ILikeAny(value string, columns ...string) func(db *gorm.DB) *gorm.DB {
 		}
 
 		return db.Where(strings.Join(conditions, " OR "), args...)
-	}
-}
-
-
-func FilterDate(filter dto.DateQuery, fieldName ...string) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		f := "created_at"
-		if len(fieldName) == 1 {
-			f = fieldName[0]
-		}
-		if filter.StartDate != nil {
-			db = db.Where(fmt.Sprintf("%v >= ?", f), filter.StartDate)
-		}
-		if filter.EndDate != nil {
-			db = db.Where(fmt.Sprintf("%v <= ?", f), filter.EndDate)
-		}
-		return db
-	}
-}
-
-func PreloadRelations(p []string) func(db *gorm.DB) *gorm.DB {
-	return func(db *gorm.DB) *gorm.DB {
-		for _, preload := range p {
-			parts := strings.Split(preload, ";")
-
-			if len(parts) > 1 {
-				relationship := parts[0]
-				condition := parts[1]
-				args := parts[2:]
-
-				conditionArgs := make([]interface{}, len(args))
-				for i, arg := range args {
-					conditionArgs[i] = arg
-				}
-
-				db = db.Preload(lo.PascalCase(relationship), func(db *gorm.DB) *gorm.DB {
-					return db.Where(condition, conditionArgs...)
-				})
-			} else {
-				db = db.Preload(lo.PascalCase(preload))
-			}
-		}
-		return db
 	}
 }

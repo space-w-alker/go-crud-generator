@@ -162,6 +162,7 @@ var templateFuncs = template.FuncMap{
 	"toGoFieldName":             toGoFieldName,
 	"pluralize":                 Pluralize,
 	"lower":                     strings.ToLower,
+	"toLower":                   strings.ToLower,
 	"snakeCase":                 lo.SnakeCase,
 	"pascalCase":                lo.PascalCase,
 	"camelCase":                 lo.CamelCase,
@@ -245,7 +246,7 @@ var templateFuncs = template.FuncMap{
 			return fmt.Sprintf("%s []%s `gorm:\"many2many:%s\"`",
 				toGoFieldName(relation.FieldName),
 				relation.RelatedEntity,
-				lo.CoalesceOrEmpty(relation.ForeignKey, foreignTable))
+				lo.CoalesceOrEmpty(relation.ForeignKey, foreignTable)+";constraint:OnDelete:CASCADE,OnUpdate:CASCADE")
 
 		default:
 			return ""
@@ -323,7 +324,7 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/space-w-alker/campus-nexus/internal/server"
+	moduleName := "github.com/space-w-alker/teesas-learning-center/internal/server"
 
 	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
 		fmt.Printf("Error generating generic code: %v", err)
