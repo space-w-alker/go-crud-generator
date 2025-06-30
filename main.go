@@ -12,6 +12,7 @@ import (
 	"text/template"
 	"unicode"
 
+	"github.com/joho/godotenv"
 	"github.com/samber/lo"
 )
 
@@ -298,6 +299,12 @@ func main() {
 		return
 	}
 
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		// .env file is optional, so we don't fail if it doesn't exist
+		fmt.Println("Warning: .env file not found, using default values")
+	}
+
 	inputFile := os.Args[1]
 	outputDir := "output"
 	if len(os.Args) > 2 {
@@ -324,7 +331,10 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/space-w-alker/campus-nexus/internal/server"
+	moduleName := os.Getenv("MODULE_NAME")
+	if moduleName == "" {
+		moduleName = "github.com/space-w-alker/campus-nexus/internal/server"
+	}
 
 	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
 		fmt.Printf("Error generating generic code: %v", err)
