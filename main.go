@@ -324,7 +324,7 @@ func main() {
 	}
 
 	// Determine module name (for imports)
-	moduleName := "github.com/space-w-alker/teesas-learning-center/internal/server"
+	moduleName := "github.com/space-w-alker/campus-nexus/internal/server"
 
 	if err := generateGenericCode(outputDir, moduleName, entities); err != nil {
 		fmt.Printf("Error generating generic code: %v", err)

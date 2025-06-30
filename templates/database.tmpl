@@ -50,7 +50,7 @@ func NewPostgresDB(config PostgresConfig) (*gorm.DB, error) {
 	}
 
 	if err := AutoMigrate(db); err != nil {
-		return nil, fmt.Errorf("Migration Failed: %w", err)
+		return nil, fmt.Errorf("migration Failed: %w", err)
 	}
 
 	log.Println("Successfully connected to PostgreSQL database")
@@ -78,11 +78,12 @@ func NewSQLiteDB(config SQLiteConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to ping SQLite database: %w", err)
 	}
 
-	db.Exec("PRAGMA foreign_keys = ON")
 
 	if err := AutoMigrate(db); err != nil {
-		return nil, fmt.Errorf("Migration Failed: %w", err)
+		return nil, fmt.Errorf("migration failed: %w", err)
 	}
+
+	db.Exec("PRAGMA foreign_keys = ON")
 
 	log.Println("Successfully connected to SQLite database")
 	return db, nil

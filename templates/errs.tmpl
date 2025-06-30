@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"{{.ModuleName}}/errs/errcodes"
+  "{{.ModuleName}}/errs/errcodes"
 )
 
 // ServerError represents an error with code, message, and timestamp
@@ -53,6 +53,9 @@ func GetStatusCode(err error) int {
 			return http.StatusUnauthorized // 401
 
 		case errcodes.CodeAccountDeactivated:
+			return http.StatusForbidden // 403
+
+		case errcodes.CodeForbidden:
 			return http.StatusForbidden // 403
 
 		case errcodes.CodeNoUserData, errcodes.CodeNotFound:
