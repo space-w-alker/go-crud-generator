@@ -417,7 +417,7 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d, false); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "server.go"), path.Join("templates", "server.tmpl"), d, true); err != nil {
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "auth_service.go"), path.Join("templates", "auth_service.tmpl"), d, true); err != nil {
@@ -426,10 +426,10 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "controllers", "auth_controller.go"), path.Join("templates", "auth_controller.tmpl"), d, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "errs", "errs.go"), path.Join("templates", "errs.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs", "errs.go"), path.Join("templates", "errs.tmpl"), d, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "errs/errcodes", "errcodes.go"), path.Join("templates", "errcodes.tmpl"), d, true); err != nil {
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "middleware", "auth_middleware.go"), path.Join("templates", "middleware.tmpl"), d, true); err != nil {

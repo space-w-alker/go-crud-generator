@@ -50,7 +50,7 @@ func NewPostgresDB(config PostgresConfig) (*gorm.DB, error) {
 	}
 
 	if err := AutoMigrate(db); err != nil {
-		return nil, fmt.Errorf("migration Failed: %w", err)
+		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	log.Println("Successfully connected to PostgreSQL database")
