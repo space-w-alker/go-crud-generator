@@ -13,45 +13,17 @@ type I{{.EntityName}}Repository interface {
 
 // {{.EntityName}}Repository handles database operations for {{.EntityName}}
 type {{.EntityName}}Repository struct {
-	DB *gorm.DB
+	*Base{{.EntityName}}Repository
 }
 
 // New{{.EntityName}}Repository creates a new repository
 func New{{.EntityName}}Repository(db *gorm.DB) *{{.EntityName}}Repository {
-	return &{{.EntityName}}Repository{DB: db}
+	return &{{.EntityName}}Repository{
+		Base{{.EntityName}}Repository: &Base{{.EntityName}}Repository{DB: db},
+	}
 }
 
-
-// Create adds a new {{.EntityName}} to the database
-func (r *{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
-  return r.BaseCreate(create)
+// To{{.EntityName}}Response converts a {{.EntityName}} model to a dto.{{.EntityName}}Response
+func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
+	return To{{.EntityName}}ResponseBase(model)
 }
-
-func (r *{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Create) []any {
-  return r.BaseBulkCreate(creates)
-}
-
-// GetAll retrieves all {{.EntityName}}s with optional filtering
-func (r *{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
-  return r.BaseGetAll(q, scopes...)
-}
-
-// GetByID retrieves a single {{.EntityName}} by ID
-func (r *{{.EntityName}}Repository) GetByID(id string, opt ...*dto.{{.EntityName}}QueryExtraOptions) (*models.{{.EntityName}}, error) {
-  return r.BaseGetByID(id, opt...)
-}
-
-// Update updates an existing {{.EntityName}}
-func (r *{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
-  return r.BaseUpdate(id, update)
-}
-
-func (r *{{.EntityName}}Repository) BulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
-  return r.BaseBulkUpdate(updates)
-}
-
-// Delete removes a {{.EntityName}} from the database
-func (r *{{.EntityName}}Repository) Delete(id string) error {
-  return r.BaseDelete(id)
-}
-

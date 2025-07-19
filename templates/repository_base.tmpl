@@ -12,7 +12,6 @@ import (
 	"gorm.io/gorm"
 )
 
-
 var {{.EntityName}}ProviderSet = wire.NewSet(
 	New{{.EntityName}}Repository,
 	Provide{{.EntityName}}Repo,
@@ -22,9 +21,13 @@ func Provide{{.EntityName}}Repo(repo *{{.EntityName}}Repository) I{{.EntityName}
 	return repo
 }
 
+// Base{{.EntityName}}Repository handles base database operations for {{.EntityName}}
+type Base{{.EntityName}}Repository struct {
+	DB *gorm.DB
+}
 
 // Create adds a new {{.EntityName}} to the database
-func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
+func (r *Base{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create) (*models.{{.EntityName}}, error) {
 	{{.EntityNameLower}} := &models.{{.EntityName}}{}
 	{{$parent := .}}
 	
@@ -117,8 +120,7 @@ func (r *{{.EntityName}}Repository) BaseCreate(create *dto.{{.EntityName}}Create
 	{{- end}}
 }
 
-
-func (r *{{.EntityName}}Repository) BaseBulkCreate(creates []*dto.{{.EntityName}}Create) []any {
+func (r *Base{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Create) []any {
 	results := make([]any, len(creates))
 
 	for i, create := range creates {
@@ -134,17 +136,17 @@ func (r *{{.EntityName}}Repository) BaseBulkCreate(creates []*dto.{{.EntityName}
 }
 
 // GetAll retrieves all {{.EntityNamePlural}} with optional filtering
-func (r *{{.EntityName}}Repository) BaseGetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
+func (r *Base{{.EntityName}}Repository) GetAll(q *dto.Full{{.EntityName}}Query, scopes ...func(*gorm.DB) *gorm.DB) ([]models.{{.EntityName}}, *Pagination, error) {
 	var {{.EntityNameLower}}s []models.{{.EntityName}}
-  {{$parent := .}}
-  scopes = append(
-    scopes,
-    FilterDate(q.DateQuery),
-    {{- range .Fields}}{{- if and .FilterBy (eq .FieldType "date")}}
-      FilterDate(dto.DateQuery{After: q.{{pascalCase .FieldName}}After, Before: q.{{pascalCase .FieldName}}Before}, "{{$parent.GetTableName}}.{{snakeCase .FieldName}}"),
-    {{- end}}{{- end}}
-    ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
-  )
+	{{$parent := .}}
+	scopes = append(
+		scopes,
+		FilterDate(q.DateQuery),
+		{{- range .Fields}}{{- if and .FilterBy (eq .FieldType "date")}}
+		FilterDate(dto.DateQuery{After: q.{{pascalCase .FieldName}}After, Before: q.{{pascalCase .FieldName}}Before}, "{{$parent.GetTableName}}.{{snakeCase .FieldName}}"),
+		{{- end}}{{- end}}
+		ILikeAny(q.Q{{- range .Fields}}{{- if .Searchable}},"{{snakeCase .FieldName}}"{{- end}}{{- end}}),
+	)
 
 	getQuery := func() *gorm.DB {
 		query := r.DB.Session(&gorm.Session{NewDB: true}).Model(&models.{{.EntityName}}{})
@@ -162,18 +164,18 @@ func (r *{{.EntityName}}Repository) BaseGetAll(q *dto.Full{{.EntityName}}Query, 
 	p := NewPagination(q.Page, q.Size, &sortBy, q.SortOrder)
 
 	if err := p.Count(getQuery(), &models.{{.EntityName}}{}, "{{.GetTableName}}.id"); err != nil {
-    return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
 	if err := getQuery().Scopes(p.Paginate(), PreloadRelations(q.Preload)).Find(&{{.EntityNameLower}}s).Error; err != nil {
-    return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
+		return nil, &Pagination{}, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 	}
 
 	return {{.EntityNameLower}}s, p, nil
 }
 
 // GetByID retrieves a single {{.EntityName}} by ID
-func (r *{{.EntityName}}Repository) BaseGetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.{{.EntityName}}QueryExtraOptions) (*models.{{.EntityName}}, error) {
+func (r *Base{{.EntityName}}Repository) GetByID(id {{.GetPrimaryKeyType}}, opt ...*dto.{{.EntityName}}QueryExtraOptions) (*models.{{.EntityName}}, error) {
 	var {{.EntityNameLower}} models.{{.EntityName}}
 	var options *dto.{{.EntityName}}QueryExtraOptions = &dto.{{.EntityName}}QueryExtraOptions{}
 	if (len(opt)) > 0 {
@@ -191,7 +193,7 @@ func (r *{{.EntityName}}Repository) BaseGetByID(id {{.GetPrimaryKeyType}}, opt .
 }
 
 // Update modifies an existing {{.EntityName}} in the database
-func (r *{{.EntityName}}Repository) BaseUpdate(id string, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
+func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityName}}Update) (*models.{{.EntityName}}, error) {
 	{{.EntityNameLower}} := &models.{{.EntityName}}{}
 	{{$parent := .}}
 	
@@ -333,8 +335,7 @@ func (r *{{.EntityName}}Repository) BaseUpdate(id string, update *dto.{{.EntityN
 	{{- end}}
 }
 
-
-func (r *{{.EntityName}}Repository) BaseBulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
+func (r *Base{{.EntityName}}Repository) BulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
 	results := make([]any, len(updates))
 
 	for i, update := range updates {
@@ -352,7 +353,7 @@ func (r *{{.EntityName}}Repository) BaseBulkUpdate(updates []*dto.{{.EntityName}
 }
 
 // Delete removes a {{.EntityName}} from the database
-func (r *{{.EntityName}}Repository) BaseDelete(id {{.GetPrimaryKeyType}}) error {
+func (r *Base{{.EntityName}}Repository) Delete(id {{.GetPrimaryKeyType}}) error {
 	// Hard delete
 	r.DB.Exec("PRAGMA foreign_keys = ON")
 	if err := r.DB.Unscoped().Delete(&models.{{.EntityName}}{}, "{{.GetPrimaryKeyName}} = ?", id).Error; err != nil {
@@ -362,31 +363,30 @@ func (r *{{.EntityName}}Repository) BaseDelete(id {{.GetPrimaryKeyType}}) error 
 	return nil
 }
 
-
 // Helper functions
-func To{{.EntityName}}Response(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
+func To{{.EntityName}}ResponseBase(model *models.{{.EntityName}}) *dto.{{.EntityName}}Response {
 	if model == nil {
 		return nil
 	}
-  return &dto.{{.EntityName}}Response{
-  Base{{.EntityName}}Response: dto.Base{{.EntityName}}Response{
-		{{- range .Fields}}
-		{{- if not .Virtual}}
-		{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
-		{{- end}}
-		{{- end}}
-		{{- range .Relations}}
-    {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-		{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
-    {{toGoFieldName .FieldName}}: To{{.RelatedEntity}}Response(model.{{toGoFieldName .FieldName}}),
-		{{- end}}
-    {{- if or (eq .RelationType "ManyToMany") (eq .RelationType "OneToMany") }}
-    {{toGoFieldName .FieldName}}: lo.Map(model.{{toGoFieldName .FieldName}}, func(item models.{{.RelatedEntity}}, _ int) dto.{{.RelatedEntity}}Response {
-			return *To{{.RelatedEntity}}Response(&item)
-		}),
-		{{- end}}
-		{{- end}}
-		BaseModelResponse:   dto.BaseModelResponse{CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt},
-	},
-  }
+	return &dto.{{.EntityName}}Response{
+		Base{{.EntityName}}Response: dto.Base{{.EntityName}}Response{
+			{{- range .Fields}}
+			{{- if not .Virtual}}
+			{{toGoFieldName .FieldName}}: model.{{toGoFieldName .FieldName}},
+			{{- end}}
+			{{- end}}
+			{{- range .Relations}}
+			{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+			{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
+			{{toGoFieldName .FieldName}}: To{{.RelatedEntity}}ResponseBase(model.{{toGoFieldName .FieldName}}),
+			{{- end}}
+			{{- if or (eq .RelationType "ManyToMany") (eq .RelationType "OneToMany") }}
+			{{toGoFieldName .FieldName}}: lo.Map(model.{{toGoFieldName .FieldName}}, func(item models.{{.RelatedEntity}}, _ int) dto.{{.RelatedEntity}}Response {
+				return *To{{.RelatedEntity}}ResponseBase(&item)
+			}),
+			{{- end}}
+			{{- end}}
+			BaseModelResponse:   dto.BaseModelResponse{CreatedAt: model.CreatedAt, UpdatedAt: model.UpdatedAt},
+		},
+	}
 }
