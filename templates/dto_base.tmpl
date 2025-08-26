@@ -9,15 +9,15 @@ import (
 type Base{{.EntityName}}Create struct {
 	{{- range .Fields}}
 	{{- if not .Virtual}}
-	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" binding:"{{formatValidationRules .}}"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" form:"{{.FieldName}}" binding:"{{formatValidationRules .}}"`
 	{{- end}}
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
+	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty" form:"{{.FieldName}}ID"`
 	{{- end}}
   {{- if (eq .RelationType "ManyToMany") }}
-	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty"`
+	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty" form:"{{.FieldName}}IDs"`
 	{{- end}}
 	{{- end}}
 }
@@ -30,15 +30,15 @@ type {{.EntityName}}BulkCreate struct {
 type Base{{.EntityName}}Update struct {
 	{{- range .Fields}}
   {{- if and (not .Primary) (not .Virtual)}}
-	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}},omitempty" form:"{{.FieldName}}"`
   {{- end}}
 	{{- end}}
 	{{- range .Relations}}
   {{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
-	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty"`
+	{{toGoFieldName .FieldName}}ID *{{relatedIDType .}} `json:"{{.FieldName}}ID,omitempty" form:"{{.FieldName}}ID"`
 	{{- end}}
   {{- if (eq .RelationType "ManyToMany") }}
-	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty"`
+	{{toGoFieldName .FieldName}}IDs []{{relatedIDType .}} `json:"{{.FieldName}}IDs,omitempty" form:"{{.FieldName}}IDs"`
 	{{- end}}
 	{{- end}}
 }
@@ -55,7 +55,7 @@ type {{.EntityName}}BulkUpdate struct {
 // Base{{.EntityName}}Response DTO for responding with {{.EntityName}} data
 type Base{{.EntityName}}Response struct {
 	{{- range .Fields}}
-	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}"`
+	{{toGoFieldName .FieldName}} *{{convertTypeScriptTypeToGo .FieldType}} `json:"{{.FieldName}}" form:"{{.FieldName}}"`
 	{{- end}}
 	{{- range .Relations}}
 	{{formatRelationDTO .}}

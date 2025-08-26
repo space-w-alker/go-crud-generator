@@ -405,7 +405,7 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "dto", "utils.go"), path.Join("templates", "dto_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), struct{}{}, true); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "repositories", "utils.go"), path.Join("templates", "repository_utils.tmpl"), d, true); err != nil {
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "models", "utils.go"), path.Join("templates", "model_utils.tmpl"), struct{}{}, true); err != nil {
