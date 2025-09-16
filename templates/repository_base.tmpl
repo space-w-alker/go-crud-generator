@@ -256,7 +256,7 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 	{{- range .Relations}}
 	{{- if eq .RelationType "ManyToMany"}}
 	// Handle {{toGoFieldName .FieldName}} many-to-many relationship updates
-	if update.{{toGoFieldName .FieldName}}IDs != nil {
+	if len(update.{{toGoFieldName .FieldName}}IDs) > 0 {
 		// Clear existing associations
 		if err := tx.Model({{$parent.EntityNameLower}}).Association("{{toGoFieldName .FieldName}}").Clear(); err != nil {
 			tx.Rollback()
@@ -264,7 +264,6 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 		}
 
 		// Add new associations if any
-		if len(update.{{toGoFieldName .FieldName}}IDs) > 0 {
 			var {{toLower (toGoFieldName .FieldName)}}Records []models.{{.RelatedEntity}}
 			if err := tx.Where("id IN ?", update.{{toGoFieldName .FieldName}}IDs).Find(&{{toLower (toGoFieldName .FieldName)}}Records).Error; err != nil {
 				tx.Rollback()
@@ -282,7 +281,6 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 				tx.Rollback()
 				return nil, errs.NewError(errcodes.CodeDBError, err.Error()).Occurred()
 			}
-		}
 	}
 	{{- end}}
 	{{- end}}
