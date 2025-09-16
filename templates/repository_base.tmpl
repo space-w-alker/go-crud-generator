@@ -39,7 +39,12 @@ func (r *Base{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create
 	{{- end}}
 
 	{{- range .Relations}}
-	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{- if eq .RelationType "ManyToOne" }}
+	if create.{{toGoFieldName .FieldName}}ID != nil {
+		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- if and (eq .RelationType "OneToOne") (not .OneToOneOwner) }}
 	if create.{{toGoFieldName .FieldName}}ID != nil {
 		{{$parent.EntityNameLower}}.{{toGoFieldName .FieldName}}ID = create.{{toGoFieldName .FieldName}}ID
 	}
@@ -240,7 +245,12 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 	{{- end}}
 
 	{{- range .Relations}}
-	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{- if eq .RelationType "ManyToOne" }}
+	if update.{{toGoFieldName .FieldName}}ID != nil {
+		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- if and (eq .RelationType "OneToOne") (not .OneToOneOwner) }}
 	if update.{{toGoFieldName .FieldName}}ID != nil {
 		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
 	}
@@ -312,7 +322,12 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 	{{- end}}
 
 	{{- range .Relations}}
-	{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+	{{- if eq .RelationType "ManyToOne" }}
+	if update.{{toGoFieldName .FieldName}}ID != nil {
+		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
+	}
+	{{- end}}
+	{{- if and (eq .RelationType "OneToOne") (not .OneToOneOwner) }}
 	if update.{{toGoFieldName .FieldName}}ID != nil {
 		updateData.{{toGoFieldName .FieldName}}ID = update.{{toGoFieldName .FieldName}}ID
 	}
@@ -374,8 +389,15 @@ func To{{.EntityName}}ResponseBase(model *models.{{.EntityName}}) *dto.{{.Entity
 			{{- end}}
 			{{- end}}
 			{{- range .Relations}}
-			{{- if or (eq .RelationType "OneToOne") (eq .RelationType "ManyToOne") }}
+			{{- if eq .RelationType "ManyToOne" }}
 			{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
+			{{toGoFieldName .FieldName}}: To{{.RelatedEntity}}ResponseBase(model.{{toGoFieldName .FieldName}}),
+			{{- end}}
+			{{- if and (eq .RelationType "OneToOne") (not .OneToOneOwner) }}
+			{{toGoFieldName .FieldName}}ID: model.{{toGoFieldName .FieldName}}ID,
+			{{toGoFieldName .FieldName}}: To{{.RelatedEntity}}ResponseBase(model.{{toGoFieldName .FieldName}}),
+			{{- end}}
+			{{- if and (eq .RelationType "OneToOne") .OneToOneOwner }}
 			{{toGoFieldName .FieldName}}: To{{.RelatedEntity}}ResponseBase(model.{{toGoFieldName .FieldName}}),
 			{{- end}}
 			{{- if or (eq .RelationType "ManyToMany") (eq .RelationType "OneToMany") }}

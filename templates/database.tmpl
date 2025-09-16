@@ -4,21 +4,12 @@ import (
 	"fmt"
 	"log"
 
+	"{{.ModuleName}}/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
-
-// PostgresConfig holds PostgreSQL-specific configuration parameters
-type PostgresConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	DBName   string
-	SSLMode  string
-}
 
 // SQLiteConfig holds SQLite-specific configuration parameters
 type SQLiteConfig struct {
@@ -26,15 +17,12 @@ type SQLiteConfig struct {
 }
 
 // NewPostgresDB creates a new PostgreSQL database connection using GORM
-func NewPostgresDB(config PostgresConfig) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-		config.Host, config.Port, config.User, config.Password, config.DBName, config.SSLMode)
-
+func NewPostgresDB(databaseURL string) (*gorm.DB, error) {
 	gormConfig := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Info), // Adjust log level as needed
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), gormConfig)
+	db, err := gorm.Open(postgres.Open(databaseURL), gormConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database: %w", err)
 	}
@@ -47,10 +35,6 @@ func NewPostgresDB(config PostgresConfig) (*gorm.DB, error) {
 
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping PostgreSQL database: %w", err)
-	}
-
-	if err := AutoMigrate(db); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	log.Println("Successfully connected to PostgreSQL database")
@@ -76,11 +60,6 @@ func NewSQLiteDB(config SQLiteConfig) (*gorm.DB, error) {
 
 	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("failed to ping SQLite database: %w", err)
-	}
-
-
-	if err := AutoMigrate(db); err != nil {
-		return nil, fmt.Errorf("migration failed: %w", err)
 	}
 
 	db.Exec("PRAGMA foreign_keys = ON")

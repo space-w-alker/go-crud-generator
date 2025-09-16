@@ -65,6 +65,9 @@ function convertToTargetFormat(inputJson) {
         if (rel.foreignKey) {
           relation.foreignKey = rel.foreignKey;
         }
+        if (rel.oneToOneOwner) {
+          relation.oneToOneOwner = true;
+        }
 
         relations.push(relation);
       }
