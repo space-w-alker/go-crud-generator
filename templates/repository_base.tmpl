@@ -125,7 +125,7 @@ func (r *Base{{.EntityName}}Repository) Create(create *dto.{{.EntityName}}Create
 	{{- end}}
 }
 
-func (r *Base{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Create) []any {
+func (r *{{.EntityName}}Repository) BulkCreate(creates []*dto.{{.EntityName}}Create) []any {
 	results := make([]any, len(creates))
 
 	for i, create := range creates {
@@ -348,7 +348,7 @@ func (r *Base{{.EntityName}}Repository) Update(id string, update *dto.{{.EntityN
 	{{- end}}
 }
 
-func (r *Base{{.EntityName}}Repository) BulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
+func (r *{{.EntityName}}Repository) BulkUpdate(updates []*dto.{{.EntityName}}UpdateWithID) []any {
 	results := make([]any, len(updates))
 
 	for i, update := range updates {

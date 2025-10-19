@@ -23,5 +23,6 @@ type {{.EntityName}}QueryExtraOptions struct {
   {{- end}}
   {{- end}}
 	Preload      []string `form:"preload[],omitempty" json:"preload[],omitempty"`
+	Join         []string `form:"join[],omitempty" json:"join[],omitempty"`
 }
 

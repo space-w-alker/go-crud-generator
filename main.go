@@ -423,7 +423,7 @@ func generateGenericCode(outputDir string, moduleName string, data []Entity) err
 	if err := generateFileFromTemplate(path.Join(outputDir, "models", "utils.go"), path.Join("templates", "model_utils.tmpl"), struct{}{}, true); err != nil {
 		return err
 	}
-	if err := generateFileFromTemplate(path.Join(outputDir, "wire.go"), path.Join("templates", "wire.tmpl"), d, false); err != nil {
+	if err := generateFileFromTemplate(path.Join(outputDir, "wire.go"), path.Join("templates", "wire.tmpl"), d, true); err != nil {
 		return err
 	}
 	if err := generateFileFromTemplate(path.Join(outputDir, "database.go"), path.Join("templates", "database.tmpl"), d, false); err != nil {

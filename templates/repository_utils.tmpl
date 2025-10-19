@@ -105,6 +105,54 @@ func PreloadRelations(p []string) func(db *gorm.DB) *gorm.DB {
 	}
 }
 
+// JoinRelations creates arbitrary joins with optional conditions
+// Format: "table_name;join_type;condition;args..."
+// Example: "users;LEFT JOIN;users.id = profiles.user_id"
+// Example with args: "users;INNER JOIN;users.status = ?;active"
+func JoinRelations(j []string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		for _, join := range j {
+			parts := strings.Split(join, ";")
+
+			if len(parts) < 2 {
+				continue // Skip malformed join strings
+			}
+
+			tableName := parts[0]
+			joinType := strings.ToUpper(parts[1])
+
+			// Validate join type
+			validJoinTypes := map[string]bool{
+				"JOIN":       true,
+				"INNER JOIN": true,
+				"LEFT JOIN":  true,
+				"RIGHT JOIN": true,
+				"FULL JOIN":  true,
+			}
+
+			if !validJoinTypes[joinType] {
+				joinType = "LEFT JOIN" // Default to LEFT JOIN if invalid
+			}
+
+			if len(parts) > 2 {
+				condition := parts[2]
+				args := parts[3:]
+
+				conditionArgs := make([]interface{}, len(args))
+				for i, arg := range args {
+					conditionArgs[i] = arg
+				}
+
+				db = db.Joins(fmt.Sprintf("%s %s ON %s", joinType, tableName, condition), conditionArgs...)
+			} else {
+				// Join without condition (not recommended but possible)
+				db = db.Joins(fmt.Sprintf("%s %s", joinType, tableName))
+			}
+		}
+		return db
+	}
+}
+
 // Count sets the total rows and pages count
 func (p *Pagination) Count(db *gorm.DB, model interface{}, primaryKey ...string) error {
 	var totalRows int64
