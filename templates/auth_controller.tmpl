@@ -30,7 +30,7 @@ func NewAuthController(authService *repositories.AuthService) *AuthController {
 // @Success 201 {object} dto.AuthResponse
 // @Failure 400 {object} errs.ServerError
 // @Router /auth/signup [post]
-func (c *AuthController) SignUp(ctx *gin.Context) {
+func (c *AuthController) SignUp(ctx *gin.Context, validators ...func(*gin.Context, *dto.SignUpInput) *errs.ServerError) {
 	var input dto.SignUpInput
 
 	// Bind and validate input
@@ -39,6 +39,14 @@ func (c *AuthController) SignUp(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, serverErr)
 		return
 	}
+
+    // Run validators after parsing body
+    for _, validator := range validators {
+        if err := validator(ctx, &input); err != nil {
+            ctx.JSON(errs.GetStatusCode(err), err)
+            return
+        }
+    }
 
 	// Call service to create user
 	response, err := c.authService.SignUp(input)
@@ -61,7 +69,7 @@ func (c *AuthController) SignUp(ctx *gin.Context) {
 // @Failure 400 {object} errs.ServerError
 // @Failure 401 {object} errs.ServerError
 // @Router /auth/signin [post]
-func (c *AuthController) SignIn(ctx *gin.Context) {
+func (c *AuthController) SignIn(ctx *gin.Context, validators ...func(*gin.Context, *dto.SignInInput) *errs.ServerError) {
 	var input dto.SignInInput
 
 	// Bind and validate input
@@ -70,6 +78,14 @@ func (c *AuthController) SignIn(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, serverErr)
 		return
 	}
+
+    // Run validators after parsing body
+    for _, validator := range validators {
+        if err := validator(ctx, &input); err != nil {
+            ctx.JSON(errs.GetStatusCode(err), err)
+            return
+        }
+    }
 
 	// Call service to authenticate user
 	response, err := c.authService.SignIn(input)
@@ -95,13 +111,21 @@ func (c *AuthController) SignIn(ctx *gin.Context) {
 // @Failure 403 {object} errs.ServerError "Account deactivated"
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /auth/refresh-token [post]
-func (c *AuthController) RefreshToken(ctx *gin.Context) {
+func (c *AuthController) RefreshToken(ctx *gin.Context, validators ...func(*gin.Context, *dto.RefreshTokenInput) *errs.ServerError) {
 	var request dto.RefreshTokenInput
 	if err := ctx.ShouldBindJSON(&request); err != nil {
 		serverErr := errs.NewError(errcodes.CodeInvalidRequest, "Invalid request format")
 		ctx.JSON(http.StatusBadRequest, serverErr)
 		return
 	}
+
+    // Run validators after parsing body
+    for _, validator := range validators {
+        if err := validator(ctx, &request); err != nil {
+            ctx.JSON(errs.GetStatusCode(err), err)
+            return
+        }
+    }
 
 	// Convert request to service input
 	input := dto.RefreshTokenInput{
@@ -123,8 +147,8 @@ func (c *AuthController) RefreshToken(ctx *gin.Context) {
 func (c *AuthController) RegisterRoutes(router *gin.RouterGroup) {
 	authGroup := router.Group("/auth")
 	{
-		authGroup.POST("/signup", c.SignUp)
-		authGroup.POST("/signin", c.SignIn)
-		authGroup.POST("/refresh-token", c.RefreshToken)
+        authGroup.POST("/signup", func(ctx *gin.Context) { c.SignUp(ctx) })
+        authGroup.POST("/signin", func(ctx *gin.Context) { c.SignIn(ctx) })
+        authGroup.POST("/refresh-token", func(ctx *gin.Context) { c.RefreshToken(ctx) })
 	}
 }

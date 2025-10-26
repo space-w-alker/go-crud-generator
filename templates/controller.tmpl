@@ -24,19 +24,19 @@ func New{{.EntityName}}Controller(repository repositories.I{{.EntityName}}Reposi
 func (c *{{.EntityName}}Controller) RegisterRoutes(router *gin.RouterGroup) {
 	{{.EntityName}} := router.Group("/{{snakeCase .EntityName}}")
 	{
-		{{.EntityName}}.POST("", c.Create)
-		{{.EntityName}}.POST("bulk", c.BulkCreate)
+		{{.EntityName}}.POST("", func(ctx *gin.Context) { c.Create(ctx) })
+		{{.EntityName}}.POST("bulk", func(ctx *gin.Context) { c.BulkCreate(ctx) })
 		{{.EntityName}}.GET("", func(ctx *gin.Context) {
-			c.GetAll(ctx)
+			c.GetAll(ctx, nil)
 		})
-		{{.EntityName}}.GET("/:id", c.GetByID)
-		{{.EntityName}}.PUT("/:id", c.Update)
-		{{.EntityName}}.PUT("bulk", c.BulkUpdate)
-		{{.EntityName}}.DELETE("/:id", c.Delete)
+		{{.EntityName}}.GET("/:id", func(ctx *gin.Context) { c.GetByID(ctx) })
+		{{.EntityName}}.PUT("/:id", func(ctx *gin.Context) { c.Update(ctx) })
+		{{.EntityName}}.PUT("bulk", func(ctx *gin.Context) { c.BulkUpdate(ctx) })
+		{{.EntityName}}.DELETE("/:id", func(ctx *gin.Context) { c.Delete(ctx) })
 		
 		// Custom endpoints
 		{{- range .CustomEndpoints}}
-		{{.EntityName}}.{{.HTTPMethod}}("{{.Path}}", c.{{.EndpointName}})
+		{{.EntityName}}.{{.HTTPMethod}}("{{.Path}}", func(ctx *gin.Context) { c.{{.EndpointName}}(ctx) })
 		{{- end}}
 	}
 }

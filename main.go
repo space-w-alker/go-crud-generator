@@ -177,7 +177,7 @@ var templateFuncs = template.FuncMap{
 		tags = append(tags, fmt.Sprintf("column:%s", column))
 
 		if field.Primary {
-			tags = append(tags, "primaryKey", "type:char(36)")
+			tags = append(tags, "primaryKey", "type:char(36)", "not null")
 		}
 
 		if !field.Nullable && !field.Primary {
@@ -495,7 +495,7 @@ func generateEntityCode(entity Entity, outputDir, moduleName string) error {
 
 	baseControllersPath := filepath.Join(outputDir, "controllers", lo.SnakeCase(entity.EntityName)+"_base.go")
 	baseControllersTempPath := filepath.Join("templates", "controller_base.tmpl")
-	if err := generateFileFromTemplate(baseControllersPath, baseControllersTempPath, templateData, true); err != nil {
+	if err := generateFileFromTemplate(baseControllersPath, baseControllersTempPath, templateData, false); err != nil {
 		return fmt.Errorf("error generating file %s: %v", baseControllersPath, err)
 	}
 

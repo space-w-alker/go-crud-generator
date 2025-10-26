@@ -28,12 +28,20 @@ import (
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}} [post]
 // @ID create{{.EntityName}}
-func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) Create(ctx *gin.Context, validators ...func(*gin.Context, *dto.{{.EntityName}}Create) *errs.ServerError) {
 	var input dto.{{.EntityName}}Create
 	
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
+	}
+
+	// Run all validators after parsing the body
+	for _, validator := range validators {
+		if err := validator(ctx, &input); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
 	}
 	
 	{{.EntityName}}, err := c.repository.Create(&input)
@@ -57,12 +65,20 @@ func (c *{{.EntityName}}Controller) Create(ctx *gin.Context) {
 // @Failure 400 {object} errs.ServerError "Invalid input"
 // @Router /{{snakeCase .EntityName}}/bulk [post]
 // @ID bulkCreate{{.EntityName}}
-func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context, validators ...func(*gin.Context, *dto.{{.EntityName}}BulkCreate) *errs.ServerError) {
 	var input dto.{{.EntityName}}BulkCreate
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
+	}
+
+	// Run all validators after parsing the body
+	for _, validator := range validators {
+		if err := validator(ctx, &input); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
 	}
 
 	results := c.repository.BulkCreate(input.{{.EntityNamePlural}})
@@ -81,15 +97,23 @@ func (c *{{.EntityName}}Controller) BulkCreate(ctx *gin.Context) {
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}} [get]
 // @ID getAll{{.EntityName}}
-func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gorm.DB) *gorm.DB) {
+func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes []func(*gorm.DB) *gorm.DB, validators ...func(*gin.Context) *errs.ServerError) {
 	var query dto.Full{{.EntityName}}Query
 	
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
 	}
+
+	// Run validators (no body exists for this handler)
+	for _, validator := range validators {
+		if err := validator(ctx); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
+	}
 	
-	{{.EntityNameLower}}s, p, err := c.repository.GetAll(&query, scopes...)
+    {{.EntityNameLower}}s, p, err := c.repository.GetAll(&query, scopes...)
 	if err != nil {
 		ctx.JSON(errs.GetStatusCode(err), err)
 		return
@@ -120,13 +144,21 @@ func (c *{{.EntityName}}Controller) GetAll(ctx *gin.Context, scopes ...func(*gor
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [get]
 // @ID get{{.EntityName}}ById
-func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context, validators ...func(*gin.Context, {{.GetPrimaryKeyType}}) *errs.ServerError) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	var query dto.{{.EntityName}}QueryExtraOptions
 
 	if err := ctx.ShouldBindQuery(&query); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
+	}
+
+	// Run validators with id after parsing inputs
+	for _, validator := range validators {
+		if err := validator(ctx, id); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
 	}
 	
 	{{.EntityName}}, err := c.repository.GetByID(id, &query)
@@ -152,13 +184,21 @@ func (c *{{.EntityName}}Controller) GetByID(ctx *gin.Context) {
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [put]
 // @ID update{{.EntityName}}
-func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) Update(ctx *gin.Context, validators ...func(*gin.Context, {{.GetPrimaryKeyType}}, *dto.{{.EntityName}}Update) *errs.ServerError) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
 	
 	var input dto.{{.EntityName}}Update
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
+	}
+
+	// Run validators after parsing id and body
+	for _, validator := range validators {
+		if err := validator(ctx, id, &input); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
 	}
 	
 	{{.EntityName}}, err := c.repository.Update(id, &input)
@@ -182,12 +222,20 @@ func (c *{{.EntityName}}Controller) Update(ctx *gin.Context) {
 // @Failure 400 {object} errs.ServerError "Invalid input"
 // @Router /{{snakeCase .EntityName}}/bulk [put]
 // @ID bulkUpdate{{.EntityName}}
-func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context, validators ...func(*gin.Context, *dto.{{.EntityName}}BulkUpdate) *errs.ServerError) {
 	var input dto.{{.EntityName}}BulkUpdate
 
 	if err := ctx.ShouldBindJSON(&input); err != nil {
 		ctx.JSON(http.StatusBadRequest, errs.NewError(errcodes.CodeInvalidRequest, err.Error()))
 		return
+	}
+
+	// Run validators after parsing the body
+	for _, validator := range validators {
+		if err := validator(ctx, &input); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
 	}
 
 	results := c.repository.BulkUpdate(input.{{.EntityNamePlural}})
@@ -207,8 +255,16 @@ func (c *{{.EntityName}}Controller) BulkUpdate(ctx *gin.Context) {
 // @Failure 500 {object} errs.ServerError "Server error"
 // @Router /{{snakeCase .EntityName}}/{id} [delete]
 // @ID delete{{.EntityName}}
-func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
+func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context, validators ...func(*gin.Context, {{.GetPrimaryKeyType}}) *errs.ServerError) {
 	id := parse{{.EntityName}}PrimaryKey(ctx.Param("id"))
+
+	// Run validators after parsing id
+	for _, validator := range validators {
+		if err := validator(ctx, id); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
+	}
 	
 	if err := c.repository.Delete(id); err != nil {
 		ctx.JSON(errs.GetStatusCode(err), err)
@@ -226,7 +282,14 @@ func (c *{{.EntityName}}Controller) Delete(ctx *gin.Context) {
 // @Accept json
 // @Produce json
 // @Router /{{snakeCase .EntityName}}s{{.Path}} [{{.HTTPMethod | lower}}]
-func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context) {
+func (c *{{$.EntityName}}Controller) {{.EndpointName}}(ctx *gin.Context, validators ...func(*gin.Context) *errs.ServerError) {
+	// Run validators (no predefined body/id for custom endpoints)
+	for _, validator := range validators {
+		if err := validator(ctx); err != nil {
+			ctx.JSON(errs.GetStatusCode(err), err)
+			return
+		}
+	}
 	// Custom endpoint implementation
 	ctx.JSON(http.StatusOK, gin.H{"message": "Not implemented yet"})
 }
